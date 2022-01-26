@@ -1,0 +1,22 @@
+volumes:
+    db-data:
+
+services:
+    api:
+        build: .
+        ports:
+            - "127.0.0.1:8080:80"
+        environment:
+            - DB_URL=mysql+aiomysql://root:root@localhost/findteam
+        restart: "unless-stopped"
+        links:
+            - findteam-db
+        
+    db:
+        image: mariadb:latest
+        restart: "always"
+        volumes:
+            - /var/lib/mysql/data:db-data
+        environment:
+            - MYSQL_ROOT_PASSWORD=root
+            - MYSQL_MYSQL_DATABASE=findteam
