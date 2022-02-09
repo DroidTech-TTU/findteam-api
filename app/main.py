@@ -1,5 +1,5 @@
 """
-CS Spin FastAPI app
+FindTeam FastAPI app
 """
 
 import asyncio

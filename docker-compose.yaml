@@ -10,7 +10,7 @@ services:
             - DB_URL=mysql+aiomysql://root:root@localhost/findteam
         restart: "unless-stopped"
         links:
-            - findteam-db
+            - db
         
     db:
         image: mariadb:latest
