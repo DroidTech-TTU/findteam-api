@@ -16,10 +16,12 @@ Base = declarative_base()
 
 
 async def init_models() -> None:
+    """Create all models in Base metadata"""
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
 
 async def get_db() -> AsyncSession:
+    """Yields an AsyncSession"""
     async with async_session() as session:
         yield session

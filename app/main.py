@@ -20,6 +20,7 @@ app = FastAPI()
 
 @app.on_event('startup')
 async def startup():
+    """Initialize logging and db models"""
     _sh = logging.StreamHandler()
     _sh.setFormatter(logging.Formatter(
         '[%(levelname)s] %(asctime)s - %(message)s'))
@@ -32,6 +33,7 @@ async def startup():
 
 @app.get('/')
 async def index():
+    """Return findteam-api version"""
     return {'findteam-api': __version__}
 
 
