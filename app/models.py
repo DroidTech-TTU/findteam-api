@@ -36,6 +36,9 @@ class User(Base):
     # def verify_password(self, password):
     #    return password == hashpw(password, self.password)
 
+    def __str__(self):
+        return f'#{self.uid} {self.first_name} {self.last_name}'
+
 
 class UserUrl(Base):
     __tablename__ = 'USER_URL'
@@ -44,8 +47,7 @@ class UserUrl(Base):
         ForeignKey('USER.uid', onupdate='CASCADE', ondelete='CASCADE'),
         primary_key=True)
     url = Column(
-        String(2000),
-        primary_key=True)
+        String(2000))
 
 
 class Tag(Base):
@@ -56,6 +58,9 @@ class Tag(Base):
     category = Column(
         String(64),
         nullable=False)
+
+    def __str__(self):
+        return f'{self.text} ({self.category})'
 
 
 class UserTagged(Base):
@@ -91,8 +96,12 @@ class Project(Base):
         nullable=False,
         default=0)
 
+    def __str__(self):
+        return f'#{self.pid} {self.title}'
+
 
 class ProjectPicture(Base):
+    __tablename__ = 'PROJECT_PICTURE'
     pid = Column(
         Integer(),
         ForeignKey('PROJECT.pid', onupdate='CASCADE', ondelete='CASCADE'),
@@ -103,6 +112,7 @@ class ProjectPicture(Base):
 
 
 class ProjectTagged(Base):
+    __tablename__ = 'PROJECT_TAGGED'
     pid = Column(
         Integer(),
         ForeignKey('PROJECT.pid', onupdate='CASCADE', ondelete='CASCADE'),
@@ -117,6 +127,7 @@ class ProjectTagged(Base):
 
 
 class ProjectMembership(Base):
+    __tablename__ = 'PROJECT_MEMBERSHIP'
     pid = Column(
         Integer(),
         ForeignKey('PROJECT.pid', onupdate='CASCADE', ondelete='CASCADE'),
@@ -126,11 +137,12 @@ class ProjectMembership(Base):
         ForeignKey('USER.uid', onupdate='CASCADE', ondelete='CASCADE'),
         primary_key=True)
     permission = Column(
-        Enum(Permission()),
+        Enum(Permission),
         nullable=False)
 
 
 class Message(Base):
+    __tablename__ = 'MESSAGE'
     id = Column(
         Integer(),
         primary_key=True,
@@ -153,3 +165,6 @@ class Message(Base):
     text = Column(
         String(128),
         nullable=False)
+
+    def __str__(self):
+        return f'#{self.id}: {self.text}'

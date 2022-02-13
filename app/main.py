@@ -4,18 +4,30 @@ FindTeam FastAPI app
 __author__ = 'DroidTech'
 __version__ = '0.2.12.22'
 
-import asyncio
+import logging
 from typing import List
 
 from fastapi import Depends, FastAPI
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.future import select
 
-from . import schemas
+from . import logger, schemas
 from .db import get_db, init_models
-
-asyncio.run(init_models())
+from .models import User
 
 app = FastAPI()
+
+
+@app.on_event('startup')
+async def startup():
+    _sh = logging.StreamHandler()
+    _sh.setFormatter(logging.Formatter(
+        '[%(levelname)s] %(asctime)s - %(message)s'))
+    logger.setLevel(logging.DEBUG)
+    logger.addHandler(_sh)
+    logger.debug('Initializing models...')
+    await init_models()
+    logger.debug('Startup complete')
 
 
 @app.get('/')
@@ -23,6 +35,9 @@ async def index():
     return {'findteam-api': __version__}
 
 
-@app.get('/users', response_model=List[schemas.User])
-def get_users(db: Session = Depends(get_db)):
-    return db.query().all()
+# response_model=List[schemas.User]
+@app.get('/users', response_model=List[str])
+async def get_users(db: AsyncSession = Depends(get_db)):
+    async with db.begin():
+        results = await db.execute(select(User))
+        return [str(x) for x in results.scalars()]

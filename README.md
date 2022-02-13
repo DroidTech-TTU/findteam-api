@@ -1,4 +1,5 @@
 # findteam-api
 FindTeam backend FastAPI source code repo
 
-To build and run with Docker: `docker-compose up -d`
+To run with Docker: `docker-compose up -d`
+Rebuild: `docker-compose rebuild`
