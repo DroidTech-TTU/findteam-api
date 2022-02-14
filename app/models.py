@@ -1,3 +1,7 @@
+"""
+FindTeam SQLAlchemy ORM models
+"""
+
 from datetime import datetime
 
 from sqlalchemy import (Boolean, Column, DateTime, Enum, ForeignKey, Integer,
