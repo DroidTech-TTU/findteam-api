@@ -1,4 +1,8 @@
-from datetime import date
+"""
+FindTeam Pydantic schemas
+"""
+
+from datetime import datetime
 from enum import IntEnum
 
 from pydantic import BaseModel

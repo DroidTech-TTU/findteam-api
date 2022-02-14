@@ -1,8 +1,6 @@
 """
 FindTeam FastAPI app
 """
-__author__ = 'DroidTech'
-__version__ = '0.2.12.22'
 
 import logging
 from typing import List
