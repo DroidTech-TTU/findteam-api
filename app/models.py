@@ -169,6 +169,10 @@ class Message(Base):
     text = Column(
         String(128),
         nullable=False)
+    is_read = Column(
+        Boolean(),
+        nullable=False,
+        default=False)
 
     def __str__(self):
         return f'#{self.id}: {self.text}'
