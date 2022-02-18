@@ -36,6 +36,7 @@ async def index():
 
 
 # response_model=List[schemas.User]
+# settings: Settings = Depends(config.get_settings)
 @app.get('/users', response_model=List[str])
 async def get_users(db: AsyncSession = Depends(get_db)):
     async with db.begin():
