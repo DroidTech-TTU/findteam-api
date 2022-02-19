@@ -7,6 +7,7 @@ from datetime import datetime
 from sqlalchemy import (Boolean, Column, DateTime, Enum, ForeignKey, Integer,
                         String)
 from sqlalchemy.orm import relationship
+from types import List
 
 from .db import Base
 from .schemas import Permission, Status
@@ -39,6 +40,9 @@ class User(Base):
         nullable=True)
     urls = relationship('UserUrl')
     tags = relationship('UserTagged')
+
+    def get_projects(self) -> List[Project]:
+        pass
 
     # def verify_password(self, password):
     #    return password == hashpw(password, self.password)
