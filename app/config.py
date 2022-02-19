@@ -6,6 +6,7 @@ class Settings(BaseSettings):
     """Configuration settings"""
     app_name: str = 'FindTeam'
     repo_name: str = 'findteam-api'
+    enable_sql: bool = False
 
 
 @lru_cache()

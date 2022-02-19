@@ -4,15 +4,13 @@ FindTeam SQLAlchemy ORM models
 
 from datetime import datetime
 
-from sqlalchemy import (Boolean, Column, DateTime, Enum, ForeignKey, Integer,
-                        String)
+from bcrypt import checkpw
+from sqlalchemy import Column, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
-from types import List
+from sqlalchemy.types import LargeBinary, Boolean, DateTime, Enum, Integer, String
 
 from .db import Base
 from .schemas import Permission, Status
-
-# https://variable-scope.com/posts/storing-and-verifying-passwords-with-sqlalchemy
 
 
 class User(Base):
@@ -33,7 +31,9 @@ class User(Base):
     email = Column(
         String(length=254),
         nullable=False)
-    password = None  # Todo
+    password = Column(
+        LargeBinary(length=60),
+        nullable=False)
     picture = Column(
         # 32 characters in sha-256 hash + 4 for .png (320x320)
         String(length=32+4),
@@ -41,11 +41,8 @@ class User(Base):
     urls = relationship('UserUrl')
     tags = relationship('UserTagged')
 
-    def get_projects(self) -> List[Project]:
-        pass
-
-    # def verify_password(self, password):
-    #    return password == hashpw(password, self.password)
+    def check_password(self, password):
+        return checkpw(self.password, password)
 
     def __str__(self):
         return f'#{self.uid} {self.first_name} {self.last_name}'

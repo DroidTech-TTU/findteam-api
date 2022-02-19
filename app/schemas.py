@@ -4,7 +4,6 @@ FindTeam Pydantic schemas
 
 from datetime import datetime
 from enum import IntEnum
-from types import List, Set, Boolean
 
 from pydantic import BaseModel
 
@@ -23,13 +22,23 @@ class Status(IntEnum):
     COMPLETE = 2
 
 
+class UserLoginModel(BaseModel):
+    email: str
+    password: str
+
+
+class StatusModel(BaseModel):
+    success: bool
+    message: str
+
+
 class User(BaseModel):
     uid: int
     first_name: str
     middle_name: str
     last_name: str
     picture_url: str
-    urls: List[str]
+    urls: list[str]
 
     class Config:
         orm_mode = True
@@ -40,8 +49,8 @@ class Project(BaseModel):
     title: str
     status: Status
     description: str
-    picture_urls: List[str]
-    members: Set[User]
+    picture_urls: list[str]
+    members: set[User]
     owner: User
 
     class Config:
@@ -50,7 +59,7 @@ class Project(BaseModel):
 
 class Message(BaseModel):
     id: int
-    is_read: Boolean
+    is_read: bool
     date: datetime
     text: str
     from_user: User
