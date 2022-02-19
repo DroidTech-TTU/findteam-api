@@ -5,6 +5,7 @@ from functools import lru_cache
 class Settings(BaseSettings):
     """Configuration settings"""
     app_name: str = 'FindTeam'
+    repo_name: str = 'findteam-api'
 
 
 @lru_cache()

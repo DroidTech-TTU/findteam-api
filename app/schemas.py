@@ -10,14 +10,30 @@ from pydantic import BaseModel
 
 
 class Permission(IntEnum):
+    """User-project membership permission level"""
     READ = 0
     READ_WRITE = 1
     READ_WRITE_EDIT = 2
 
+
 class Status(IntEnum):
+    """Project completion status"""
     AWAITING_TEAM = 0
     IN_PROGRESS = 1
     COMPLETE = 2
+
+
+class User(BaseModel):
+    uid: int
+    first_name: str
+    middle_name: str
+    last_name: str
+    picture_url: str
+    urls: List[str]
+
+    class Config:
+        orm_mode = True
+
 
 class Project(BaseModel):
     pid: int
@@ -31,18 +47,6 @@ class Project(BaseModel):
     class Config:
         orm_mode = True
 
-class User(BaseModel):
-    uid: int
-    first_name: str
-    middle_name: str
-    last_name: str
-    picture_url: str
-    urls: List[str]
-    owned_projects = List[Project]
-
-
-    class Config:
-        orm_mode = True
 
 class Message(BaseModel):
     id: int
@@ -51,3 +55,6 @@ class Message(BaseModel):
     text: str
     from_user: User
     to: User | Project
+
+    class Config:
+        orm_mode = True

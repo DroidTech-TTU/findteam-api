@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
 from . import logger, schemas
+from .config import Settings, get_settings
 from .db import get_db, init_models
 from .models import User
 
@@ -30,15 +31,17 @@ async def startup():
 
 
 @app.get('/')
-async def index():
+async def index(settings: Settings = Depends(get_settings)):
     """Return findteam-api version"""
-    return {'findteam-api': __version__}
+    return {settings.repo_name: __version__}
 
 
-# response_model=List[schemas.User]
-# settings: Settings = Depends(config.get_settings)
-@app.get('/users', response_model=List[str])
-async def get_users(db: AsyncSession = Depends(get_db)):
+@app.post('/user/login')
+async def post_login(db: AsyncSession = Depends(get_db)):
+    pass
+
+@app.get('/user/projects', response_model=List[schemas.Project])
+async def get_user_projects(uid: int, db: AsyncSession = Depends(get_db)):
     async with db.begin():
-        results = await db.execute(select(User))
+        results = await db.execute(select(Project))
         return [str(x) for x in results.scalars()]
