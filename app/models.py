@@ -6,6 +6,7 @@ from datetime import datetime
 
 from sqlalchemy import (Boolean, Column, DateTime, Enum, ForeignKey, Integer,
                         String)
+from sqlalchemy.orm import relationship
 
 from .db import Base
 from .schemas import Permission
@@ -33,9 +34,11 @@ class User(Base):
         nullable=False)
     password = None  # Todo
     picture = Column(
+        # 32 characters in sha-256 hash + 4 for .png (320x320)
         String(length=32+4),
         nullable=True)
-    # 32 characters in sha-256 hash + 4 for .png (320x320)
+    urls = relationship('UserUrl')
+    tags = relationship('UserTagged')
 
     # def verify_password(self, password):
     #    return password == hashpw(password, self.password)
@@ -48,7 +51,10 @@ class UserUrl(Base):
     __tablename__ = 'USER_URL'
     uid = Column(
         Integer(),
-        ForeignKey('USER.uid', onupdate='CASCADE', ondelete='CASCADE'),
+        ForeignKey(
+            'USER.uid',
+            onupdate='CASCADE',
+            ondelete='CASCADE'),
         primary_key=True)
     url = Column(
         String(2000))
@@ -71,10 +77,17 @@ class UserTagged(Base):
     __tablename__ = 'USER_TAGGED'
     uid = Column(
         Integer(),
+        ForeignKey(
+            'USER.uid',
+            onupdate='CASCADE',
+            ondelete='CASCADE'),
         primary_key=True)
     tag_text = Column(
         String(128),
-        ForeignKey('TAG.text', onupdate='CASCADE', ondelete='CASCADE'),
+        ForeignKey(
+            'TAG.text',
+            onupdate='CASCADE',
+            ondelete='CASCADE'),
         primary_key=True)
 
 
@@ -86,7 +99,10 @@ class Project(Base):
         autoincrement=True)
     owner_uid = Column(
         Integer(),
-        ForeignKey('USER.uid', onupdate='CASCADE', ondelete='CASCADE'),
+        ForeignKey(
+            'USER.uid',
+            onupdate='CASCADE',
+            ondelete='CASCADE'),
         primary_key=True)
     title = Column(
         String(128),
@@ -99,6 +115,9 @@ class Project(Base):
         Integer(),
         nullable=False,
         default=0)
+    pictures = relationship('ProjectPicture')
+    tags = relationship('ProjectTagged')
+    members = relationship('ProjectMembership')
 
     def __str__(self):
         return f'#{self.pid} {self.title}'
@@ -108,7 +127,10 @@ class ProjectPicture(Base):
     __tablename__ = 'PROJECT_PICTURE'
     pid = Column(
         Integer(),
-        ForeignKey('PROJECT.pid', onupdate='CASCADE', ondelete='CASCADE'),
+        ForeignKey(
+            'PROJECT.pid',
+            onupdate='CASCADE',
+            ondelete='CASCADE'),
         primary_key=True)
     picture = Column(
         String(length=32+4),
@@ -119,11 +141,17 @@ class ProjectTagged(Base):
     __tablename__ = 'PROJECT_TAGGED'
     pid = Column(
         Integer(),
-        ForeignKey('PROJECT.pid', onupdate='CASCADE', ondelete='CASCADE'),
+        ForeignKey(
+            'PROJECT.pid',
+            onupdate='CASCADE',
+            ondelete='CASCADE'),
         primary_key=True)
     tag_text = Column(
         String(128),
-        ForeignKey('TAG.text', onupdate='CASCADE', ondelete='CASCADE'),
+        ForeignKey(
+            'TAG.text',
+            onupdate='CASCADE',
+            ondelete='CASCADE'),
         primary_key=True)
     is_user_requirement = Column(
         Boolean(),
@@ -134,11 +162,17 @@ class ProjectMembership(Base):
     __tablename__ = 'PROJECT_MEMBERSHIP'
     pid = Column(
         Integer(),
-        ForeignKey('PROJECT.pid', onupdate='CASCADE', ondelete='CASCADE'),
+        ForeignKey(
+            'PROJECT.pid',
+            onupdate='CASCADE',
+            ondelete='CASCADE'),
         primary_key=True)
     uid = Column(
         Integer(),
-        ForeignKey('USER.uid', onupdate='CASCADE', ondelete='CASCADE'),
+        ForeignKey(
+            'USER.uid',
+            onupdate='CASCADE',
+            ondelete='CASCADE'),
         primary_key=True)
     permission = Column(
         Enum(Permission),
@@ -153,14 +187,23 @@ class Message(Base):
         autoincrement=True)
     from_uid = Column(
         Integer(),
-        ForeignKey('USER.uid', onupdate='CASCADE', ondelete='CASCADE'))
+        ForeignKey(
+            'USER.uid',
+            onupdate='CASCADE',
+            ondelete='CASCADE'))
     to_uid = Column(
         Integer(),
-        ForeignKey('USER.uid', onupdate='CASCADE', ondelete='CASCADE'),
+        ForeignKey(
+            'USER.uid',
+            onupdate='CASCADE',
+            ondelete='CASCADE'),
         nullable=True)
     to_pid = Column(
         Integer(),
-        ForeignKey('PROJECT.pid', onupdate='CASCADE', ondelete='CASCADE'),
+        ForeignKey(
+            'PROJECT.pid',
+            onupdate='CASCADE',
+            ondelete='CASCADE'),
         nullable=True)
     date = Column(
         DateTime(),
