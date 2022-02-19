@@ -9,7 +9,7 @@ from sqlalchemy import (Boolean, Column, DateTime, Enum, ForeignKey, Integer,
 from sqlalchemy.orm import relationship
 
 from .db import Base
-from .schemas import Permission
+from .schemas import Permission, Status
 
 # https://variable-scope.com/posts/storing-and-verifying-passwords-with-sqlalchemy
 
@@ -126,7 +126,7 @@ class Project(Base):
 class ProjectPicture(Base):
     __tablename__ = 'PROJECT_PICTURE'
     pid = Column(
-        Integer(),
+        Enum(Status),
         ForeignKey(
             'PROJECT.pid',
             onupdate='CASCADE',
@@ -212,6 +212,10 @@ class Message(Base):
     text = Column(
         String(128),
         nullable=False)
+    is_read = Column(
+        Boolean(),
+        nullable=False,
+        default=False)
 
     def __str__(self):
         return f'#{self.id}: {self.text}'
