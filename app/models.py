@@ -8,7 +8,7 @@ from sqlalchemy import (Boolean, Column, DateTime, Enum, ForeignKey, Integer,
                         String)
 
 from .db import Base
-from .schemas import Permission
+from .schemas import Permission, Status
 
 # https://variable-scope.com/posts/storing-and-verifying-passwords-with-sqlalchemy
 
@@ -107,7 +107,7 @@ class Project(Base):
 class ProjectPicture(Base):
     __tablename__ = 'PROJECT_PICTURE'
     pid = Column(
-        Integer(),
+        Enum(Status),
         ForeignKey('PROJECT.pid', onupdate='CASCADE', ondelete='CASCADE'),
         primary_key=True)
     picture = Column(
