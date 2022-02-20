@@ -12,7 +12,7 @@ from sqlalchemy.future import select
 from . import __version__, logger, models
 from .config import Settings, get_settings
 from .db import get_db, init_models
-from .schemas import UserLoginModel, StatusModel
+from .schemas import CredentialModel, StatusModel
 
 app = FastAPI()
 
@@ -40,7 +40,7 @@ async def index(settings: Settings = Depends(get_settings)):
 
 
 @app.post('/login', response_model=StatusModel)
-async def post_login(login: UserLoginModel, db: AsyncSession = Depends(get_db)):
+async def post_login(credentials: CredentialModel, db: AsyncSession = Depends(get_db)):
     async with db.begin():
         user = await db.execute(select(models.User))
     return StatusModel(

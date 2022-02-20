@@ -22,7 +22,7 @@ class Status(IntEnum):
     COMPLETE = 2
 
 
-class UserLoginModel(BaseModel):
+class CredentialModel(BaseModel):
     email: str
     password: str
 
