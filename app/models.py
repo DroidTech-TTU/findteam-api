@@ -2,12 +2,17 @@
 FindTeam SQLAlchemy ORM models
 """
 
+from base64 import b64decode
 from datetime import datetime
+from typing import Optional
 
 from bcrypt import checkpw
 from sqlalchemy import Column, ForeignKey, Integer, String
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.future import select
 from sqlalchemy.orm import relationship
-from sqlalchemy.types import LargeBinary, Boolean, DateTime, Enum, Integer, String
+from sqlalchemy.types import (Boolean, DateTime, Enum, Integer, LargeBinary,
+                              String)
 
 from .db import Base
 from .schemas import Permission, Status
@@ -30,6 +35,7 @@ class User(Base):
         nullable=True)
     email = Column(
         String(length=254),
+        unique=True,
         nullable=False)
     password = Column(
         LargeBinary(length=60),
@@ -41,11 +47,18 @@ class User(Base):
     urls = relationship('UserUrl')
     tags = relationship('UserTagged')
 
-    def check_password(self, password):
-        return checkpw(self.password, password)
-
     def __str__(self):
         return f'#{self.uid} {self.first_name} {self.last_name}'
+
+    def check_password(user, password: str) -> bool:
+        """Return true if password matches self.password hash"""
+        return checkpw(password.encode('utf8'), user.password)
+
+    @classmethod
+    async def from_email(cls, email: str, async_session: AsyncSession) -> Optional['User']:
+        """Return the User by email address"""
+        async with async_session.begin():
+            return (await async_session.execute(select(cls).where(cls.email == email))).scalar()
 
 
 class UserUrl(Base):
@@ -113,7 +126,7 @@ class Project(Base):
         String(4096),
         nullable=False)
     status = Column(
-        Integer(),
+        Enum(Status),
         nullable=False,
         default=0)
     pictures = relationship('ProjectPicture')
@@ -127,7 +140,7 @@ class Project(Base):
 class ProjectPicture(Base):
     __tablename__ = 'PROJECT_PICTURE'
     pid = Column(
-        Enum(Status),
+        Integer(),
         ForeignKey(
             'PROJECT.pid',
             onupdate='CASCADE',
