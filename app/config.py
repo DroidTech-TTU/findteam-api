@@ -1,15 +1,15 @@
 from functools import lru_cache
 from pathlib import Path
 
-from pydantic import BaseSettings
+from pydantic import BaseSettings, Field
 
 
 class Settings(BaseSettings):
     """Configuration settings"""
     app_name: str = 'FindTeam'
     repo_name: str = 'findteam-api'
-    enable_sql: bool = True
-    picture_storage: Path = Path.cwd() / 'pictures'
+    enable_sql: bool = Field(True, env='ENABLE_SQL')
+    picture_storage: Path = Field('/pictures', env='PICTURE_STORAGE')
 
 
 @lru_cache()

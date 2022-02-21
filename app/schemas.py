@@ -26,13 +26,19 @@ class CredentialModel(BaseModel):
     email: str
     password: str
 
+    class Config:
+        orm_mode = True
+
 
 class StatusModel(BaseModel):
     success: bool
     message: str
 
+    class Config:
+        orm_mode = True
 
-class User(BaseModel):
+
+class UserModel(BaseModel):
     uid: int
     first_name: str
     middle_name: str
@@ -44,26 +50,26 @@ class User(BaseModel):
         orm_mode = True
 
 
-class Project(BaseModel):
+class ProjectModel(BaseModel):
     pid: int
     title: str
     status: Status
     description: str
     picture_urls: list[str]
-    members: set[User]
-    owner: User
+    members: set[UserModel]
+    owner: UserModel
 
     class Config:
         orm_mode = True
 
 
-class Message(BaseModel):
+class MessageModel(BaseModel):
     id: int
     is_read: bool
     date: datetime
     text: str
-    from_user: User
-    to: User | Project
+    from_user: UserModel
+    to: UserModel | ProjectModel
 
     class Config:
         orm_mode = True

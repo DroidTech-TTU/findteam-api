@@ -6,7 +6,7 @@ import logging
 from http import HTTPStatus
 
 from fastapi import Depends, FastAPI, HTTPException
-from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from . import __version__, logger, models, schemas
@@ -14,7 +14,7 @@ from .config import Settings, get_settings
 from .db import get_db, init_models
 
 app = FastAPI(
-    title='FindTeam',
+    title=get_settings().app_name,
     description=__doc__,
     version=__version__,
     openapi_tags=[
@@ -28,9 +28,6 @@ app = FastAPI(
         }
     ])
 
-app.mount(
-    '/picture',
-    StaticFiles(directory='pictures'))
 
 @app.on_event('startup')
 async def startup():
@@ -70,3 +67,9 @@ async def post_login(credentials: schemas.CredentialModel, db: AsyncSession = De
     return schemas.StatusModel(
         success=True,
         message=HTTPStatus.OK.phrase)
+
+
+@app.get('/picture/{filename}', response_class=FileResponse)
+async def get_picture(filename: str, settings: Settings = Depends(get_settings)):
+    """Return picture file"""
+    return FileResponse(settings.picture_storage / filename)
