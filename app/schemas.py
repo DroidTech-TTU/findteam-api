@@ -10,9 +10,10 @@ from pydantic import BaseModel
 
 class Permission(IntEnum):
     """User-project membership permission level"""
-    READ = 0
-    READ_WRITE = 1
-    READ_WRITE_EDIT = 2
+    NOTHING = 0
+    READ = 1
+    READ_WRITE = 2
+    READ_WRITE_EDIT = 3
 
 
 class Status(IntEnum):
@@ -22,20 +23,28 @@ class Status(IntEnum):
     COMPLETE = 2
 
 
-class CredentialModel(BaseModel):
+class LoginRequestModel(BaseModel):
     email: str
     password: str
 
-    class Config:
-        orm_mode = True
 
-
-class StatusModel(BaseModel):
+class LoginResultModel(BaseModel):
     success: bool
-    message: str
+    uid: int
+    login_token: str
 
-    class Config:
-        orm_mode = True
+
+class RegisterRequestModel(BaseModel):
+    first_name: str
+    middle_name: str
+    last_name: str
+    email: str
+    password: str
+
+
+class LoginTokenModel(BaseModel):
+    uid: int
+    login_token: str
 
 
 class UserModel(BaseModel):
@@ -44,6 +53,7 @@ class UserModel(BaseModel):
     middle_name: str
     last_name: str
     picture_url: str
+    email: str
     urls: list[str]
 
     class Config:

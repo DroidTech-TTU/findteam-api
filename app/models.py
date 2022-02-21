@@ -2,12 +2,13 @@
 FindTeam SQLAlchemy ORM models
 """
 
+from base64 import b64decode, b64encode
 from datetime import datetime
-from pathlib import Path
+from random import randbytes
 from typing import Optional
 
 from bcrypt import checkpw
-from sqlalchemy import Column, ForeignKey, Integer, String
+from sqlalchemy import Column, ForeignKey, Integer, String, union_all
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.orm import relationship
@@ -44,15 +45,43 @@ class User(Base):
         # 32 characters in sha-256 hash + 4 for .png (320x320)
         String(length=32+4),
         nullable=True)
+    login_token = Column(
+        LargeBinary(length=32),
+        nullable=False,
+        default=lambda: randbytes(16))
     urls = relationship('UserUrl')
     tags = relationship('UserTagged')
 
     def __str__(self):
         return f'#{self.uid} {self.first_name} {self.last_name}'
 
-    def check_password(user, password: str) -> bool:
-        """Return true if password matches self.password hash"""
-        return checkpw(password.encode('utf8'), user.password)
+    @property
+    def b64_login_token(self):
+        """Return self.login_token as base64 encoded string"""
+        return b64encode(self.login_token)
+
+    def check_b64_login_token(self, b64_login_token):
+        """Return True if b64_login_token matches self.login_token"""
+        return b64decode(b64_login_token) == self.login_token
+
+    def check_password(self, password: str) -> bool:
+        """Return True if password matches self.password hash"""
+        return checkpw(password.encode(), self.password)
+
+    async def get_owned_projects(self, async_session: AsyncSession) -> list['Project']:
+        async with async_session.begin():
+            return (await async_session.execute(select(Project).where(Project.owner_uid == self.uid))).values()
+
+    async def get_membership_projects(self, async_session: AsyncSession) -> list['Project']:
+        async with async_session.begin():
+            memberships = (await async_session.execute(select(ProjectMembership).where(ProjectMembership.uid == self.uid and ProjectMembership.permission > Permission.NOTHING))).values()
+            return [membership.project for membership in memberships]
+
+    @classmethod
+    async def from_uid(cls, uid: int, async_session: AsyncSession) -> Optional['User']:
+        """Return the User by the user id"""
+        async with async_session.begin():
+            return (await async_session.execute(select(cls).where(cls.uid == uid))).one_or_none()
 
     @classmethod
     async def from_email(cls, email: str, async_session: AsyncSession) -> Optional['User']:
@@ -191,6 +220,7 @@ class ProjectMembership(Base):
     permission = Column(
         Enum(Permission),
         nullable=False)
+    project = relationship(Project)
 
 
 class Message(Base):

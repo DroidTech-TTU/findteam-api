@@ -32,12 +32,11 @@ app = FastAPI(
 @app.on_event('startup')
 async def startup():
     """Initialize logging and db models"""
-    _sh = logging.StreamHandler()
-    _sh.setFormatter(logging.Formatter(
-        '[%(levelname)s] %(asctime)s - %(message)s'))
-    logger.setLevel(logging.DEBUG)
-    logger.addHandler(_sh)
     settings = get_settings()
+    _sh = logging.StreamHandler()
+    _sh.setFormatter(settings.logging_format)
+    logger.setLevel(settings.logging_level)
+    logger.addHandler(_sh)
     if settings.enable_sql:
         logger.debug('Initializing models...')
         await init_models()
@@ -55,21 +54,36 @@ async def index(settings: Settings = Depends(get_settings)):
     return {settings.repo_name: __version__}
 
 
-@app.post('/login', response_model=schemas.StatusModel, tags=['users'])
-async def post_login(credentials: schemas.CredentialModel, db: AsyncSession = Depends(get_db)):
-    """Accept credentials and return auth token"""
+@app.post('/login', response_model=schemas.LoginResultModel, tags=['users'])
+async def post_login(credentials: schemas.LoginRequestModel, db: AsyncSession = Depends(get_db)):
+    """Process LoginRequestModel to return LoginResultModel"""
     user = await models.User.from_email(credentials.email, db)
     if not user:
         raise HTTPException(status_code=404)
     if not user.check_password(credentials.password):
         raise HTTPException(status_code=403)
-    # Todo: return auth token
-    return schemas.StatusModel(
+    return schemas.LoginResultModel(
         success=True,
-        message=HTTPStatus.OK.phrase)
+        login_token=user.b64_login_token)
 
 
-@app.get('/picture/{filename}', response_class=FileResponse)
+@app.post('/register', response_model=schemas.LoginResultModel, tags=['users'])
+async def post_register(credentials: schemas.RegisterRequestModel, db: AsyncSession = Depends(get_db)):
+    raise NotImplemented  # Todo
+
+
+@app.get('/user', response_model=schemas.UserModel, tags=['users'])
+async def get_me(login_token: schemas.LoginTokenModel, db: AsyncSession = Depends(get_db)):
+    """Get currently logged in UserModel"""
+    user = await models.User.from_uid(login_token.uid)
+    if not user:
+        raise HTTPException(status_code=403)
+    if not user.check_b64_login_token(login_token.login_token):
+        raise HTTPException(status_code=403)
+    return schemas.UserModel().from_orm(user)
+
+
+@app.get('/picture/{filename}', response_class=FileResponse, tags=['pictures'])
 async def get_picture(filename: str, settings: Settings = Depends(get_settings)):
     """Return picture file"""
     return FileResponse(settings.picture_storage / filename)

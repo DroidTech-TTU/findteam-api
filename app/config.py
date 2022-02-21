@@ -1,3 +1,4 @@
+import logging
 from functools import lru_cache
 from pathlib import Path
 
@@ -10,6 +11,8 @@ class Settings(BaseSettings):
     repo_name: str = 'findteam-api'
     enable_sql: bool = Field(True, env='ENABLE_SQL')
     picture_storage: Path = Field('/pictures', env='PICTURE_STORAGE')
+    logging_format: logging.Formatter = f'%(asctime)s %(levelname)s {app_name} %(message)s'
+    logging_level: int = logging.DEBUG
 
 
 @lru_cache()
