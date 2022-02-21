@@ -6,7 +6,7 @@ import logging
 from http import HTTPStatus
 
 from fastapi import Depends, FastAPI, HTTPException
-from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from . import __version__, logger, models, schemas
@@ -16,8 +16,21 @@ from .db import get_db, init_models
 app = FastAPI(
     title='FindTeam',
     description=__doc__,
-    version=__version__)
+    version=__version__,
+    openapi_tags=[
+        {
+            'name': 'users',
+            'description': 'User database operation'
+        },
+        {
+            'name': 'pictures',
+            'description': 'Picture storage and retrieval'
+        }
+    ])
 
+app.mount(
+    '/picture',
+    StaticFiles(directory='pictures'))
 
 @app.on_event('startup')
 async def startup():
@@ -45,7 +58,7 @@ async def index(settings: Settings = Depends(get_settings)):
     return {settings.repo_name: __version__}
 
 
-@app.post('/login', response_model=schemas.StatusModel)
+@app.post('/login', response_model=schemas.StatusModel, tags=['users'])
 async def post_login(credentials: schemas.CredentialModel, db: AsyncSession = Depends(get_db)):
     """Accept credentials and return auth token"""
     user = await models.User.from_email(credentials.email, db)
@@ -57,7 +70,3 @@ async def post_login(credentials: schemas.CredentialModel, db: AsyncSession = De
     return schemas.StatusModel(
         success=True,
         message=HTTPStatus.OK.phrase)
-
-@app.get('/picture/{filename}', response_class=FileResponse)
-async def get_picture(filename: str, settings: Settings = Depends(get_settings)):
-    return FileResponse(settings.picture_storage / filename)
