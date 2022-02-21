@@ -6,13 +6,17 @@ import logging
 from http import HTTPStatus
 
 from fastapi import Depends, FastAPI, HTTPException
+from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from . import __version__, logger, models, schemas
 from .config import Settings, get_settings
 from .db import get_db, init_models
 
-app = FastAPI()
+app = FastAPI(
+    title='FindTeam',
+    description=__doc__,
+    version=__version__)
 
 
 @app.on_event('startup')
@@ -23,11 +27,15 @@ async def startup():
         '[%(levelname)s] %(asctime)s - %(message)s'))
     logger.setLevel(logging.DEBUG)
     logger.addHandler(_sh)
-    if get_settings().enable_sql:
+    settings = get_settings()
+    if settings.enable_sql:
         logger.debug('Initializing models...')
         await init_models()
     else:
         logger.debug('Not initializing models')
+    settings.picture_storage.mkdir(
+        parents=True,
+        exist_ok=True)
     logger.info('Startup complete')
 
 
@@ -39,11 +47,17 @@ async def index(settings: Settings = Depends(get_settings)):
 
 @app.post('/login', response_model=schemas.StatusModel)
 async def post_login(credentials: schemas.CredentialModel, db: AsyncSession = Depends(get_db)):
+    """Accept credentials and return auth token"""
     user = await models.User.from_email(credentials.email, db)
     if not user:
         raise HTTPException(status_code=404)
     if not user.check_password(credentials.password):
         raise HTTPException(status_code=403)
+    # Todo: return auth token
     return schemas.StatusModel(
         success=True,
         message=HTTPStatus.OK.phrase)
+
+@app.get('/picture/{filename}', response_class=FileResponse)
+async def get_picture(filename: str, settings: Settings = Depends(get_settings)):
+    return FileResponse(settings.picture_storage / filename)

@@ -2,8 +2,8 @@
 FindTeam SQLAlchemy ORM models
 """
 
-from base64 import b64decode
 from datetime import datetime
+from pathlib import Path
 from typing import Optional
 
 from bcrypt import checkpw
@@ -58,7 +58,7 @@ class User(Base):
     async def from_email(cls, email: str, async_session: AsyncSession) -> Optional['User']:
         """Return the User by email address"""
         async with async_session.begin():
-            return (await async_session.execute(select(cls).where(cls.email == email))).scalar()
+            return (await async_session.execute(select(cls).where(cls.email == email))).one_or_none()
 
 
 class UserUrl(Base):
