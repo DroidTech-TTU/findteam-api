@@ -30,16 +30,27 @@ class LoginRequestModel(BaseModel):
 
 class LoginResultModel(BaseModel):
     success: bool
-    uid: int
-    login_token: str
+    uid: int | None
+    login_token: str | None
 
 
 class RegisterRequestModel(BaseModel):
     first_name: str
-    middle_name: str
+    middle_name: str | None
     last_name: str
     email: str
     password: str
+
+    class Config:
+        schema_extra = {
+            'example': {
+                'first_name': 'Rory',
+                'middle_name': '',
+                'last_name': 'E',
+                'email': 'user@site.com',
+                'password': '$2b$12$IxPcWcNHYo1flBRosFU5/eFJzuPs3kvLVrQXx.Uubxhs4DvHsRpba'
+            }
+        }
 
 
 class LoginTokenModel(BaseModel):
