@@ -11,7 +11,8 @@ class Settings(BaseSettings):
     repo_name: str = 'findteam-api'
     enable_sql: bool = Field(True, env='ENABLE_SQL')
     picture_storage: Path = Field('/pictures', env='PICTURE_STORAGE')
-    logging_format: logging.Formatter = f'%(asctime)s %(levelname)s {app_name} %(message)s'
+    logging_format: str = Field(
+        f'%(asctime)s %(levelname)s {app_name} %(message)s', env='LOGGING_FORMAT')
     logging_level: int = logging.DEBUG
 
 

@@ -2,8 +2,7 @@
 FindTeam FastAPI app
 """
 
-import logging
-from http import HTTPStatus
+from logging import Formatter, StreamHandler
 
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.responses import FileResponse
@@ -33,8 +32,8 @@ app = FastAPI(
 async def startup():
     """Initialize logging and db models"""
     settings = get_settings()
-    _sh = logging.StreamHandler()
-    _sh.setFormatter(settings.logging_format)
+    _sh = StreamHandler()
+    _sh.setFormatter(Formatter(settings.logging_format))
     logger.setLevel(settings.logging_level)
     logger.addHandler(_sh)
     if settings.enable_sql:
@@ -64,12 +63,28 @@ async def post_login(credentials: schemas.LoginRequestModel, db: AsyncSession = 
         raise HTTPException(status_code=403)
     return schemas.LoginResultModel(
         success=True,
+        uid=user.uid,
         login_token=user.b64_login_token)
 
 
 @app.post('/register', response_model=schemas.LoginResultModel, tags=['users'])
 async def post_register(credentials: schemas.RegisterRequestModel, db: AsyncSession = Depends(get_db)):
-    raise NotImplemented  # Todo
+    """Process RegisterRequestModel to return LoginResultModel"""
+    user = models.User(
+        first_name=credentials.first_name,
+        middle_name=credentials.middle_name,
+        last_name=credentials.last_name,
+        email=credentials.email,
+        password=credentials.password)
+    try:
+        db.add(user)
+        await db.commit()
+    except:
+        logger.exception()
+        return schemas.LoginResultModel(success=False)
+    return schemas.LoginResultModel(
+        success=True,
+        login_token=user.b64_login_token)
 
 
 @app.get('/user', response_model=schemas.UserModel, tags=['users'])

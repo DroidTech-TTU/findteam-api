@@ -7,7 +7,7 @@ from datetime import datetime
 from random import randbytes
 from typing import Optional
 
-from bcrypt import checkpw
+from bcrypt import checkpw, gensalt, hashpw
 from sqlalchemy import Column, ForeignKey, Integer, String, union_all
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
@@ -76,6 +76,11 @@ class User(Base):
         async with async_session.begin():
             memberships = (await async_session.execute(select(ProjectMembership).where(ProjectMembership.uid == self.uid and ProjectMembership.permission > Permission.NOTHING))).values()
             return [membership.project for membership in memberships]
+
+    @staticmethod
+    def hash_password(password: str) -> str:
+        """Return bcrypt hashed password - THIS SHOULD BE DONE ON CLIENT"""
+        return hashpw(password.encode(), gensalt())
 
     @classmethod
     async def from_uid(cls, uid: int, async_session: AsyncSession) -> Optional['User']:
@@ -160,9 +165,12 @@ class Project(Base):
         default=0)
     pictures = relationship('ProjectPicture')
     tags = relationship('ProjectTagged')
-    members = relationship('ProjectMembership')
+    members = relationship(
+        'ProjectMembership',
+        backref='project')
 
     def __str__(self):
+        """pid title"""
         return f'#{self.pid} {self.title}'
 
 
@@ -220,7 +228,6 @@ class ProjectMembership(Base):
     permission = Column(
         Enum(Permission),
         nullable=False)
-    project = relationship(Project)
 
 
 class Message(Base):
