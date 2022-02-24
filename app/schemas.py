@@ -33,6 +33,15 @@ class LoginResultModel(BaseModel):
     uid: int | None
     login_token: str | None
 
+    class Config:
+        schema_extra = {
+            'example': {
+                'success': True,
+                'uid': 21,
+                'login_token': 'Sw65wUqGwyP5fDUKNY4UDg=='
+            }
+        }
+
 
 class RegisterRequestModel(BaseModel):
     first_name: str
@@ -56,6 +65,14 @@ class RegisterRequestModel(BaseModel):
 class LoginTokenModel(BaseModel):
     uid: int
     login_token: str
+
+    class Config:
+        schema_extra = {
+            'example': {
+                'uid': 21,
+                'login_token': 'Sw65wUqGwyP5fDUKNY4UDg=='
+            }
+        }
 
 
 class UserModel(BaseModel):

@@ -8,7 +8,7 @@ from random import randbytes
 from typing import Optional
 
 from bcrypt import checkpw, gensalt, hashpw
-from sqlalchemy import Column, ForeignKey, Integer, String, union_all
+from sqlalchemy import Column, ForeignKey, Integer, String
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.orm import relationship
@@ -46,7 +46,7 @@ class User(Base):
         String(length=32+4),
         nullable=True)
     login_token = Column(
-        LargeBinary(length=32),
+        LargeBinary(length=16),
         nullable=False,
         default=lambda: randbytes(16))
     urls = relationship('UserUrl')
