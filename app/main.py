@@ -74,7 +74,7 @@ async def post_login(credentials: schemas.LoginRequestModel, db: AsyncSession = 
 @app.post(
     '/register',
     response_model=schemas.LoginResultModel,
-    response={
+    responses={
         500: {'description': 'Error adding User to database'}
     },
     tags=['users'])
