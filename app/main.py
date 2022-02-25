@@ -41,9 +41,10 @@ async def startup():
         await init_models()
     else:
         logger.debug('Not initializing models')
-    settings.picture_storage.mkdir(
-        parents=True,
-        exist_ok=True)
+    if settings.picture_storage:
+        settings.picture_storage.mkdir(
+            parents=True,
+            exist_ok=True)
     logger.info('Startup complete')
 
 
@@ -53,21 +54,30 @@ async def index(settings: Settings = Depends(get_settings)):
     return {settings.repo_name: __version__}
 
 
-@app.post('/login', response_model=schemas.LoginResultModel, tags=['users'])
+@app.post(
+    '/login',
+    response_model=schemas.LoginResultModel,
+    responses={
+        403: {'description': 'Email not found or password not correct'}
+    },
+    tags=['users'])
 async def post_login(credentials: schemas.LoginRequestModel, db: AsyncSession = Depends(get_db)):
     """Process LoginRequestModel to return LoginResultModel"""
     user = await models.User.from_email(credentials.email, db)
-    if not user:
-        raise HTTPException(status_code=404)
-    if not user.check_password(credentials.password):
+    if not user or not user.check_password(credentials.password):
         raise HTTPException(status_code=403)
     return schemas.LoginResultModel(
-        success=True,
         uid=user.uid,
         login_token=user.b64_login_token)
 
 
-@app.post('/register', response_model=schemas.LoginResultModel, tags=['users'])
+@app.post(
+    '/register',
+    response_model=schemas.LoginResultModel,
+    response={
+        500: {'description': 'Error adding User to database'}
+    },
+    tags=['users'])
 async def post_register(credentials: schemas.RegisterRequestModel, db: AsyncSession = Depends(get_db)):
     """Process RegisterRequestModel to return LoginResultModel"""
     user = models.User(
@@ -81,9 +91,9 @@ async def post_register(credentials: schemas.RegisterRequestModel, db: AsyncSess
         await db.commit()
     except:
         logger.exception()
-        return schemas.LoginResultModel(success=False)
+        raise HTTPException(status_code=500)
     return schemas.LoginResultModel(
-        success=True,
+        uid=user.uid,
         login_token=user.b64_login_token)
 
 
