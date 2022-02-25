@@ -97,18 +97,25 @@ async def post_register(credentials: schemas.RegisterRequestModel, db: AsyncSess
         login_token=user.b64_login_token)
 
 
-@app.get('/user', response_model=schemas.UserModel, tags=['users'])
+@app.get(
+    '/user',
+    response_model=schemas.UserModel,
+    responses={
+        403: {'description': 'User authorization error'}
+    },
+    tags=['users'])
 async def get_me(login_token: schemas.LoginTokenModel, db: AsyncSession = Depends(get_db)):
     """Get currently logged in UserModel"""
-    user = await models.User.from_uid(login_token.uid)
-    if not user:
-        raise HTTPException(status_code=403)
-    if not user.check_b64_login_token(login_token.login_token):
+    user = await models.User.from_uid(login_token.uid, db)
+    if not user or not user.check_b64_login_token(login_token.login_token):
         raise HTTPException(status_code=403)
     return schemas.UserModel().from_orm(user)
 
 
-@app.get('/picture/{filename}', response_class=FileResponse, tags=['pictures'])
+@app.get(
+    '/picture/{filename}',
+    response_class=FileResponse,
+    tags=['pictures'])
 async def get_picture(filename: str, settings: Settings = Depends(get_settings)):
     """Return picture file"""
     return FileResponse(settings.picture_storage / filename)
