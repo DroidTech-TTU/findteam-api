@@ -27,6 +27,14 @@ class LoginRequestModel(BaseModel):
     email: str
     password: str
 
+    class Config:
+        schema_extra = {
+            'example': {
+                'email': 'user@site.com',
+                'password': 'hunter2'
+            }
+        }
+
 
 class LoginResultModel(BaseModel):
     success: bool
