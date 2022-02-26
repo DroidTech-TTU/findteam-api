@@ -98,7 +98,7 @@ async def post_register(credentials: schemas.RegisterRequestModel, db: AsyncSess
 
 
 @app.get(
-    '/user',
+    '/me',
     response_model=schemas.UserModel,
     responses={
         403: {'description': 'User authorization error'}
@@ -119,3 +119,4 @@ async def get_me(login_token: schemas.LoginTokenModel, db: AsyncSession = Depend
 async def get_picture(filename: str, settings: Settings = Depends(get_settings)):
     """Return picture file"""
     return FileResponse(settings.picture_storage / filename)
+

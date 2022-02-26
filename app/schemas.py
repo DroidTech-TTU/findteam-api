@@ -8,19 +8,30 @@ from enum import IntEnum
 from pydantic import BaseModel
 
 
-class Permission(IntEnum):
+class MembershipType(IntEnum):
     """User-project membership permission level"""
-    NOTHING = 0
-    READ = 1
-    READ_WRITE = 2
-    READ_WRITE_EDIT = 3
+
+    APPLICANT = 0
+    """Read, chat"""
+
+    MEMBER = 1
+    """Write, read, chat"""
+
+    ADMIN = 2
+    """Accept applicants, write, read, chat"""
 
 
 class Status(IntEnum):
     """Project completion status"""
+
     AWAITING_TEAM = 0
+    """Before progress is made"""
+
     IN_PROGRESS = 1
+    """While progress is being made"""
+
     COMPLETE = 2
+    """Project complete"""
 
 
 class LoginRequestModel(BaseModel):

@@ -16,7 +16,7 @@ from sqlalchemy.types import (Boolean, DateTime, Enum, Integer, LargeBinary,
                               String)
 
 from .db import Base
-from .schemas import Permission, Status
+from .schemas import MembershipType, Status
 
 
 class User(Base):
@@ -74,7 +74,7 @@ class User(Base):
 
     async def get_membership_projects(self, async_session: AsyncSession) -> list['Project']:
         async with async_session.begin():
-            memberships = (await async_session.execute(select(ProjectMembership).where(ProjectMembership.uid == self.uid and ProjectMembership.permission > Permission.NOTHING))).values()
+            memberships = (await async_session.execute(select(ProjectMembership).where(ProjectMembership.uid == self.uid and ProjectMembership.permission > MembershipType.NOTHING))).values()
             return [membership.project for membership in memberships]
 
     @staticmethod
@@ -225,8 +225,8 @@ class ProjectMembership(Base):
             onupdate='CASCADE',
             ondelete='CASCADE'),
         primary_key=True)
-    permission = Column(
-        Enum(Permission),
+    membership_type = Column(
+        Enum(MembershipType),
         nullable=False)
 
 
