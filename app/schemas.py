@@ -34,33 +34,6 @@ class Status(IntEnum):
     """Project complete"""
 
 
-class LoginRequestModel(BaseModel):
-    email: str
-    password: str
-
-    class Config:
-        schema_extra = {
-            'example': {
-                'email': 'user@site.com',
-                'password': 'hunter2'
-            }
-        }
-
-
-class LoginResultModel(BaseModel):
-    uid: int
-    login_token: str
-
-    class Config:
-        schema_extra = {
-            'example': {
-                'success': True,
-                'uid': 21,
-                'login_token': 'Sw65wUqGwyP5fDUKNY4UDg=='
-            }
-        }
-
-
 class RegisterRequestModel(BaseModel):
     first_name: str
     middle_name: str | None
@@ -80,20 +53,20 @@ class RegisterRequestModel(BaseModel):
         }
 
 
-class LoginTokenModel(BaseModel):
-    uid: int
-    login_token: str
+class OAuth2AccessTokenModel(BaseModel):
+    access_token: str
+    token_type: str = 'Bearer'
 
     class Config:
         schema_extra = {
             'example': {
-                'uid': 21,
-                'login_token': 'Sw65wUqGwyP5fDUKNY4UDg=='
+                'access_token': 'Sw65wUqGwyP5fDUKNY4UDg==',
+                'token_type': 'Bearer'
             }
         }
 
 
-class UserModel(BaseModel):
+class UserResultModel(BaseModel):
     uid: int
     first_name: str
     middle_name: str | None
@@ -107,6 +80,28 @@ class UserModel(BaseModel):
         schema_extra = {
             'example': {
                 'uid': 21,
+                'first_name': 'Rory',
+                'middle_name': '',
+                'last_name': 'E',
+                'picture_url': '8f434346648f6b96df89dda901c5176b10a6d83961dd3c1ac88b59b2dc327aa4.png',
+                'email': 'user@site.com',
+                'urls': [
+                    'https://github.com/roryeckel'
+                ]
+            }
+        }
+
+
+class UserRequestModel(BaseModel):
+    first_name: str
+    middle_name: str | None
+    last_name: str
+    email: str
+    urls: list[str]
+
+    class Config:
+        schema_extra = {
+            'example': {
                 'first_name': 'Rory',
                 'middle_name': '',
                 'last_name': 'E',
@@ -124,8 +119,8 @@ class ProjectModel(BaseModel):
     status: Status
     description: str
     picture_urls: list[str]
-    members: set[UserModel]
-    owner: UserModel
+    members: set[UserResultModel]
+    owner: UserResultModel
 
     class Config:
         orm_mode = True
@@ -147,8 +142,8 @@ class MessageModel(BaseModel):
     is_read: bool
     date: datetime
     text: str
-    from_user: UserModel
-    to: UserModel | ProjectModel
+    from_user: UserResultModel
+    to: UserResultModel | ProjectModel
 
     class Config:
         orm_mode = True

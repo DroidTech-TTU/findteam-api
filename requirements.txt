@@ -3,3 +3,4 @@ fastapi>=0.73.0
 sqlalchemy>=1.4.29
 aiomysql>=0.0.22
 bcrypt>=3.2.0
+python-multipart>=0.0.5

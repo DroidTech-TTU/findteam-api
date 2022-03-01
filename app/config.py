@@ -1,3 +1,7 @@
+"""
+Settings and environment variable storage
+"""
+
 import logging
 from functools import lru_cache
 from pathlib import Path

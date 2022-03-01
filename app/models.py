@@ -8,7 +8,7 @@ from random import randbytes
 from typing import Optional
 
 from bcrypt import checkpw, gensalt, hashpw
-from sqlalchemy import Column, ForeignKey, Integer, String
+from sqlalchemy import Column, ForeignKey
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.orm import relationship
@@ -45,7 +45,7 @@ class User(Base):
         # 32 characters in sha-256 hash + 4 for .png (320x320)
         String(length=32+4),
         nullable=True)
-    login_token = Column(
+    access_token = Column(
         LargeBinary(length=16),
         nullable=False,
         default=lambda: randbytes(16))
@@ -56,17 +56,16 @@ class User(Base):
         return f'#{self.uid} {self.first_name} {self.last_name}'
 
     @property
-    def b64_login_token(self):
-        """Return self.login_token as base64 encoded string"""
-        return b64encode(self.login_token)
-
-    def check_b64_login_token(self, b64_login_token):
-        """Return True if b64_login_token matches self.login_token"""
-        return b64decode(b64_login_token) == self.login_token
+    def b64_access_token(self):
+        """Return self.access_token as base64 encoded string"""
+        return b64encode(self.access_token)
 
     def check_password(self, password: str) -> bool:
         """Return True if password matches self.password hash"""
         return checkpw(password.encode(), self.password)
+
+    def hash_password(self, password: str):
+        self.password = hashpw(password.encode(), gensalt())
 
     async def get_owned_projects(self, async_session: AsyncSession) -> list['Project']:
         async with async_session.begin():
@@ -76,11 +75,6 @@ class User(Base):
         async with async_session.begin():
             memberships = (await async_session.execute(select(ProjectMembership).where(ProjectMembership.uid == self.uid and ProjectMembership.permission > MembershipType.NOTHING))).values()
             return [membership.project for membership in memberships]
-
-    @staticmethod
-    def hash_password(password: str) -> str:
-        """Return bcrypt hashed password - THIS SHOULD BE DONE ON CLIENT"""
-        return hashpw(password.encode(), gensalt())
 
     @classmethod
     async def from_uid(cls, uid: int, async_session: AsyncSession) -> Optional['User']:
@@ -93,6 +87,12 @@ class User(Base):
         """Return the User by email address"""
         async with async_session.begin():
             return (await async_session.execute(select(cls).where(cls.email == email))).one_or_none()
+
+    @classmethod
+    async def from_b64_access_token(cls, b64_access_token: str, async_session: AsyncSession) -> Optional['User']:
+        """Return the User by OAuth2 access_token"""
+        async with async_session.begin():
+            return (await async_session.execute(select(cls).where(cls.access_token == b64decode(b64_access_token)))).one_or_none()
 
 
 class UserUrl(Base):
