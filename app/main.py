@@ -39,6 +39,7 @@ async def startup():
     _sh.setFormatter(Formatter(settings.logging_format))
     logger.setLevel(settings.logging_level)
     logger.addHandler(_sh)
+    logger.debug(str(settings))
     if settings.enable_sql:
         logger.debug('Initializing models...')
         await init_models()
