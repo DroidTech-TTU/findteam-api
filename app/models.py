@@ -64,9 +64,6 @@ class User(Base):
         """Return True if password matches self.password hash"""
         return checkpw(password.encode(), self.password)
 
-    def hash_password(self, password: str):
-        self.password = hashpw(password.encode(), gensalt())
-
     async def get_owned_projects(self, async_session: AsyncSession) -> list['Project']:
         async with async_session.begin():
             return (await async_session.execute(select(Project).where(Project.owner_uid == self.uid))).values()
@@ -93,6 +90,11 @@ class User(Base):
         """Return the User by OAuth2 access_token"""
         async with async_session.begin():
             return (await async_session.execute(select(cls).where(cls.access_token == b64decode(b64_access_token)))).one_or_none()
+
+    @staticmethod
+    def hash_password(password: str) -> bytes:
+        """Return bcrypt hashed password"""
+        return hashpw(password.encode(), gensalt())
 
 
 class UserUrl(Base):
