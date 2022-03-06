@@ -4,9 +4,10 @@ FindTeam FastAPI app
 
 from logging import Formatter, StreamHandler
 
-from fastapi import Depends, FastAPI, Header, HTTPException, Response, status
-from fastapi.responses import FileResponse
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestFormStrict
+from fastapi import Depends, FastAPI, Header, HTTPException, status
+from fastapi.responses import FileResponse, RedirectResponse, Response
+from fastapi.security import (OAuth2PasswordBearer,
+                              OAuth2PasswordRequestFormStrict)
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -53,27 +54,11 @@ async def startup():
 
 
 @app.get('/')
-async def index(settings: Settings = Depends(get_settings)):
-    """Return findteam-api version"""
-    return {settings.repo_name: __version__}
-
-
-@app.post(
-    '/login',
-    response_model=schemas.OAuth2AccessTokenModel,
-    responses={
-        status.HTTP_403_FORBIDDEN: {
-            'description': 'Email not found or password not correct'}
-    },
-    tags=['users'])
-async def post_login(
-        credentials: OAuth2PasswordRequestFormStrict = Depends(),
-        db: AsyncSession = Depends(get_db)):
-    """Process LoginRequestModel to return LoginTokenModel"""
-    user = await models.User.from_email(credentials.username, db)
-    if not user or not user.check_password(credentials.password):
-        raise HTTPException(status_code=403)
-    return schemas.OAuth2AccessTokenModel(access_token=user.access_token)
+async def index():
+    """Redirect to /docs"""
+    return RedirectResponse(
+        url="/docs",
+        status_code=status.HTTP_303_SEE_OTHER)
 
 
 @app.post(
@@ -81,10 +66,10 @@ async def post_login(
     response_model=schemas.OAuth2AccessTokenModel,
     responses={
         status.HTTP_500_INTERNAL_SERVER_ERROR: {
-            'description': 'Error adding User to database'}
+            'description': 'Error during User registration commit'}
     },
     tags=['users'])
-async def post_register(
+async def register(
         credentials: schemas.RegisterRequestModel,
         db: AsyncSession = Depends(get_db)):
     """Process RegisterRequestModel to return LoginTokenModel"""
@@ -93,12 +78,12 @@ async def post_register(
         middle_name=credentials.middle_name,
         last_name=credentials.last_name,
         email=credentials.email,
-        password=credentials.password)
+        password=models.User.hash_password(credentials.password))
     try:
         db.add(user)
         await db.commit()
     except SQLAlchemyError as e:
-        logger.exception()
+        logger.exception('Error during User registration commit')
         raise HTTPException(status_code=500) from e
     return schemas.OAuth2AccessTokenModel(access_token=user.b64_access_token)
 
@@ -140,6 +125,29 @@ async def post_me(
     for attr, val in new_info.dict().items():
         setattr(user, attr, val)
     return Response(status_code=200)
+
+
+@app.post(
+    '/login',
+    response_model=schemas.OAuth2AccessTokenModel,
+    responses={
+        status.HTTP_403_FORBIDDEN: {
+            'description': 'Email not found or password not correct'}
+    },
+    tags=['users'])
+async def post_login(
+        credentials: OAuth2PasswordRequestFormStrict = Depends(),
+        db: AsyncSession = Depends(get_db)):
+    """Process LoginRequestModel to return LoginTokenModel"""
+    user = await models.User.from_email(credentials.username, db)
+    if not user or not user.check_password(credentials.password):
+        raise HTTPException(status_code=403)
+    return schemas.OAuth2AccessTokenModel(access_token=user.access_token)
+
+
+@app.post('/me/reset')
+async def reset_password():
+    raise NotImplemented
 
 
 @app.get(
