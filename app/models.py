@@ -8,10 +8,11 @@ from random import randbytes
 from typing import Optional
 
 from bcrypt import checkpw, gensalt, hashpw
-from sqlalchemy import Column, ForeignKey
+from sqlalchemy import Column, ForeignKey, insert, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import join, relationship
+from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy.types import (Boolean, DateTime, Enum, Integer, LargeBinary,
                               String)
 
@@ -49,8 +50,9 @@ class User(Base):
         LargeBinary(length=16),
         nullable=False,
         default=lambda: randbytes(16))
-    urls = relationship('UserUrl')
-    tags = relationship('UserTagged')
+    # urls = relationship('UserUrl')
+    # tags = relationship('UserTagged')
+    # Above line is bugged due to asyncio
 
     def __str__(self):
         return f'#{self.uid} {self.first_name} {self.last_name}'
@@ -59,10 +61,6 @@ class User(Base):
     def b64_access_token(self):
         """Return self.access_token as base64 encoded string"""
         return b64encode(self.access_token)
-
-    def check_password(self, password: str) -> bool:
-        """Return True if password matches self.password hash"""
-        return checkpw(password.encode(), self.password)
 
     async def get_owned_projects(self, async_session: AsyncSession) -> list['Project']:
         async with async_session.begin():
@@ -77,24 +75,44 @@ class User(Base):
     async def from_uid(cls, uid: int, async_session: AsyncSession) -> Optional['User']:
         """Return the User by the user id"""
         async with async_session.begin():
-            return (await async_session.execute(select(cls).where(cls.uid == uid))).one_or_none()
+            try:
+                stmt = await async_session.execute(select(cls).where(cls.uid == uid))
+                result = stmt.one()
+                return result[0]
+            except NoResultFound:
+                return None
 
     @classmethod
     async def from_email(cls, email: str, async_session: AsyncSession) -> Optional['User']:
         """Return the User by email address"""
         async with async_session.begin():
-            return (await async_session.execute(select(cls).where(cls.email == email))).one_or_none()
+            try:
+                stmt = await async_session.execute(select(cls).where(cls.email == email))
+                result = stmt.one()
+                return result[0]
+            except NoResultFound:
+                return None
 
     @classmethod
     async def from_b64_access_token(cls, b64_access_token: str, async_session: AsyncSession) -> Optional['User']:
         """Return the User by OAuth2 access_token"""
         async with async_session.begin():
-            return (await async_session.execute(select(cls).where(cls.access_token == b64decode(b64_access_token)))).one_or_none()
+            try:
+                stmt = await async_session.execute(select(cls).where(cls.access_token == b64decode(b64_access_token)))
+                result = stmt.one()
+                return result[0]
+            except NoResultFound:
+                return None
 
     @staticmethod
     def hash_password(password: str) -> bytes:
         """Return bcrypt hashed password"""
         return hashpw(password.encode(), gensalt())
+
+    @staticmethod
+    def check_password(password: str, hashed_password: bytes) -> bool:
+        """Return True if password matches self.password hash"""
+        return checkpw(password.encode(), hashed_password)
 
 
 class UserUrl(Base):
@@ -121,6 +139,16 @@ class Tag(Base):
 
     def __str__(self):
         return f'{self.text} ({self.category})'
+
+    @classmethod
+    async def get_user_tags(cls, user: User, async_session: AsyncSession):
+        """Return the Tags associated with a User"""
+        async with async_session.begin():
+            try:
+                stmt = await async_session.execute(select(join(User, UserTagged)).where(UserTagged.uid == user.uid and User.uid == user.uid))
+                return stmt.all()
+            except NoResultFound:
+                return list()
 
 
 class UserTagged(Base):

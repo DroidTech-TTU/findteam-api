@@ -66,14 +66,27 @@ class OAuth2AccessTokenModel(BaseModel):
         }
 
 
+class TagModel(BaseModel):
+    text: str
+    category: str
+
+    class Config:
+        schema_extra = {
+            'example': {
+                'text': 'Houston',
+                'category': 'City'
+            }
+        }
+
 class UserResultModel(BaseModel):
     uid: int
     first_name: str
     middle_name: str | None
     last_name: str
-    picture_url: str
+    picture: str
     email: str
     urls: list[str]
+    tags: list[TagModel]
 
     class Config:
         orm_mode = True
@@ -83,7 +96,7 @@ class UserResultModel(BaseModel):
                 'first_name': 'Rory',
                 'middle_name': '',
                 'last_name': 'E',
-                'picture_url': '8f434346648f6b96df89dda901c5176b10a6d83961dd3c1ac88b59b2dc327aa4.png',
+                'picture': '8f434346648f6b96df89dda901c5176b10a6d83961dd3c1ac88b59b2dc327aa4.png',
                 'email': 'user@site.com',
                 'urls': [
                     'https://github.com/roryeckel'
@@ -98,6 +111,7 @@ class UserRequestModel(BaseModel):
     last_name: str
     email: str
     urls: list[str]
+    tags: list[TagModel]
 
     class Config:
         schema_extra = {
@@ -118,9 +132,10 @@ class ProjectModel(BaseModel):
     title: str
     status: Status
     description: str
-    picture_urls: list[str]
+    pictures: list[str]
     members: set[UserResultModel]
     owner: UserResultModel
+    tags: list[TagModel]
 
     class Config:
         orm_mode = True
@@ -130,7 +145,7 @@ class ProjectModel(BaseModel):
                 'title': 'A Very Cool Project',
                 'status': Status.AWAITING_TEAM,
                 'description': 'This project is very cool. Please join.',
-                'picture_urls': [
+                'pictures': [
                     '8f434346648f6b96df89dda901c5176b10a6d83961dd3c1ac88b59b2dc327aa4.png'
                 ]
             }

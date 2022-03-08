@@ -41,7 +41,7 @@ async def startup():
     logger.setLevel(settings.logging_level)
     logger.addHandler(_sh)
     logger.debug(str(settings))
-    if settings.enable_sql:
+    if settings.create_tables:
         logger.debug('Initializing models...')
         await init_models()
     else:
@@ -99,12 +99,18 @@ async def get_me(
         access_token: str = Depends(oauth2),
         db: AsyncSession = Depends(get_db)):
     """Get currently logged in UserResultModel"""
-    logger.info(f'test = {access_token}')
-    logger.info(f'test = {access_token.parse()}')
     user = await models.User.from_b64_access_token(access_token, db)
-    if not user or not user.check_b64_access_token(access_token.login_token):
+    if not user:
         raise HTTPException(status_code=403)
-    return schemas.UserResultModel().from_orm(user)
+    return schemas.UserResultModel(
+        uid=user.uid,
+        first_name=user.first_name,
+        middle_name=user.middle_name,
+        last_name=user.last_name,
+        picture=user.picture,
+        email=user.email,
+        urls=user.urls,
+        tags=models.Tag.get_user_tags(user, db))
 
 
 @app.post(
@@ -140,9 +146,10 @@ async def post_login(
         db: AsyncSession = Depends(get_db)):
     """Process LoginRequestModel to return LoginTokenModel"""
     user = await models.User.from_email(credentials.username, db)
-    if not user or not user.check_password(credentials.password):
+    logger.info(f'user = {user}')
+    if not user or not models.User.check_password(credentials.password, user.password):
         raise HTTPException(status_code=403)
-    return schemas.OAuth2AccessTokenModel(access_token=user.access_token)
+    return schemas.OAuth2AccessTokenModel(access_token=user.b64_access_token)
 
 
 @app.post('/me/reset')
