@@ -3,35 +3,10 @@ FindTeam Pydantic schemas
 """
 
 from datetime import datetime
-from enum import IntEnum
 
 from pydantic import BaseModel
 
-
-class MembershipType(IntEnum):
-    """User-project membership permission level"""
-
-    APPLICANT = 0
-    """Read, chat"""
-
-    MEMBER = 1
-    """Write, read, chat"""
-
-    ADMIN = 2
-    """Accept applicants, write, read, chat"""
-
-
-class Status(IntEnum):
-    """Project completion status"""
-
-    AWAITING_TEAM = 0
-    """Before progress is made"""
-
-    IN_PROGRESS = 1
-    """While progress is being made"""
-
-    COMPLETE = 2
-    """Project complete"""
+from .models import MembershipType, Status
 
 
 class RegisterRequestModel(BaseModel):
@@ -48,7 +23,7 @@ class RegisterRequestModel(BaseModel):
                 'middle_name': '',
                 'last_name': 'E',
                 'email': 'user@site.com',
-                'password': '$2b$12$IxPcWcNHYo1flBRosFU5/eFJzuPs3kvLVrQXx.Uubxhs4DvHsRpba'
+                'password': 'hunter2'
             }
         }
 
@@ -71,6 +46,7 @@ class TagModel(BaseModel):
     category: str
 
     class Config:
+        orm_mode = True
         schema_extra = {
             'example': {
                 'text': 'Houston',
@@ -78,14 +54,29 @@ class TagModel(BaseModel):
             }
         }
 
+
+class UrlModel(BaseModel):
+    domain: str
+    path: str
+
+    class Config:
+        orm_mode = True
+        schema_extra = {
+            'example': {
+                'domain': 'github.com',
+                'path': '/roryeckel'
+            }
+        }
+
+
 class UserResultModel(BaseModel):
     uid: int
     first_name: str
     middle_name: str | None
     last_name: str
-    picture: str
+    picture: str | None
     email: str
-    urls: list[str]
+    urls: list[UrlModel]
     tags: list[TagModel]
 
     class Config:
@@ -99,7 +90,16 @@ class UserResultModel(BaseModel):
                 'picture': '8f434346648f6b96df89dda901c5176b10a6d83961dd3c1ac88b59b2dc327aa4.png',
                 'email': 'user@site.com',
                 'urls': [
-                    'https://github.com/roryeckel'
+                    {
+                        'domain': 'github.com',
+                        'path': '/roryeckel'
+                    }
+                ],
+                'tags': [
+                    {
+                        'text': 'Houston',
+                        'category': 'Location'
+                    }
                 ]
             }
         }
@@ -110,7 +110,7 @@ class UserRequestModel(BaseModel):
     middle_name: str | None
     last_name: str
     email: str
-    urls: list[str]
+    urls: list[UrlModel]
     tags: list[TagModel]
 
     class Config:
@@ -121,7 +121,16 @@ class UserRequestModel(BaseModel):
                 'last_name': 'E',
                 'email': 'user@site.com',
                 'urls': [
-                    'https://github.com/roryeckel'
+                    {
+                        'domain': 'github.com',
+                        'path': '/roryeckel'
+                    }
+                ],
+                'tags': [
+                    {
+                        'text': 'Houston',
+                        'category': 'Location'
+                    }
                 ]
             }
         }

@@ -4,7 +4,7 @@ FindTeam FastAPI app
 
 from logging import Formatter, StreamHandler
 
-from fastapi import Depends, FastAPI, Header, HTTPException, status
+from fastapi import Depends, FastAPI, HTTPException, Request, status
 from fastapi.responses import FileResponse, RedirectResponse, Response
 from fastapi.security import (OAuth2PasswordBearer,
                               OAuth2PasswordRequestFormStrict)
@@ -57,7 +57,7 @@ async def startup():
 async def index():
     """Redirect to /docs"""
     return RedirectResponse(
-        url="/docs",
+        url='/docs',
         status_code=status.HTTP_303_SEE_OTHER)
 
 
@@ -79,8 +79,8 @@ async def register(
         last_name=credentials.last_name,
         email=credentials.email,
         password=models.User.hash_password(credentials.password))
+    db.add(user)
     try:
-        db.add(user)
         await db.commit()
     except SQLAlchemyError as e:
         logger.exception('Error during User registration commit')
@@ -103,14 +103,9 @@ async def get_me(
     if not user:
         raise HTTPException(status_code=403)
     return schemas.UserResultModel(
-        uid=user.uid,
-        first_name=user.first_name,
-        middle_name=user.middle_name,
-        last_name=user.last_name,
-        picture=user.picture,
-        email=user.email,
-        urls=user.urls,
-        tags=models.Tag.get_user_tags(user, db))
+        urls=[schemas.UrlModel.from_orm(url) for url in await models.UserUrl.get_user_urls(user.uid, db)],
+        tags=[schemas.TagModel.from_orm(tag) for tag in await models.Tag.get_user_tags(user.uid, db)],
+        **dict(user))
 
 
 @app.post(
@@ -121,15 +116,32 @@ async def get_me(
     },
     tags=['users'])
 async def post_me(
-        login_token: schemas.OAuth2AccessTokenModel,
         new_info: schemas.UserRequestModel,
+        access_token: str = Depends(oauth2),
         db: AsyncSession = Depends(get_db)):
     """Process UserRequestModel"""
-    user = await models.User.from_uid(login_token.uid, db)
-    if not user or not user.check_b64_access_token(login_token.login_token):
+    user = await models.User.from_b64_access_token(access_token, db)
+    if not user:
         raise HTTPException(status_code=403)
-    for attr, val in new_info.dict().items():
-        setattr(user, attr, val)
+    uid = user.uid
+    try:
+        for key in dict(user):  # Remaining UserRequestModel attributes
+            try:
+                setattr(user, key, getattr(new_info, key))
+            except AttributeError:  # Ignore extras
+                pass
+        await db.commit()
+        await models.Tag.set_user_tags(
+            uid,
+            [dict(tag_dict) for tag_dict in new_info.tags],
+            db)
+        await models.UserUrl.set_user_urls(
+            uid,
+            [dict(url_model) for url_model in new_info.urls],
+            db)
+    except SQLAlchemyError as e:
+        logger.exception('Error during User update commit')
+        raise HTTPException(status_code=500) from e
     return Response(status_code=200)
 
 
@@ -142,12 +154,13 @@ async def post_me(
     },
     tags=['users'])
 async def post_login(
+        request: Request,
         credentials: OAuth2PasswordRequestFormStrict = Depends(),
         db: AsyncSession = Depends(get_db)):
     """Process LoginRequestModel to return LoginTokenModel"""
     user = await models.User.from_email(credentials.username, db)
-    logger.info(f'user = {user}')
-    if not user or not models.User.check_password(credentials.password, user.password):
+    if not user or not models.User.check_password(user, credentials.password):
+        logger.warning(f'Incorrect password for {user} ({request.client})')
         raise HTTPException(status_code=403)
     return schemas.OAuth2AccessTokenModel(access_token=user.b64_access_token)
 

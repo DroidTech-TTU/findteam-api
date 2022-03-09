@@ -4,6 +4,7 @@ Database creation and fetching
 
 from os import getenv
 
+from sqlalchemy import inspect
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
@@ -16,7 +17,15 @@ async_session = sessionmaker(
     class_=AsyncSession,
     expire_on_commit=False)
 
-Base = declarative_base()
+_Base = declarative_base()
+
+
+class Base(_Base):
+    """Subclass of declarative_base to add dict conversion"""
+    __abstract__ = True
+
+    def __iter__(self):
+        return iter((c.key, getattr(self, c.key)) for c in inspect(self).mapper.column_attrs)
 
 
 async def init_models() -> None:
