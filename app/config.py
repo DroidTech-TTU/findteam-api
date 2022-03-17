@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     """Configuration settings"""
     app_name: str = 'FindTeam'
     repo_name: str = 'findteam-api'
+    db_url: str = Field('mysql+aiomysql://root:root@127.0.0.1:3306/findteam', env='DB_URL')
     create_tables: bool = Field(True, env='CREATE_TABLES')
     picture_storage: Path = Field('/pictures', env='PICTURE_STORAGE')
     logging_format: str = Field(

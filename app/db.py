@@ -9,8 +9,10 @@ from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
+from .config import get_settings
+
 engine = create_async_engine(
-    getenv('DB_URL'),
+    get_settings().db_url,
     echo=True)
 async_session = sessionmaker(
     engine,

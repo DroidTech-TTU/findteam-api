@@ -14,8 +14,6 @@
             ],
             "jinja": true,
             "env": {
-                "DB_URL": "mysql+aiomysql://root:root@127.0.0.1:3306/findteam",
-                "ENABLE_SQL": "False",
                 "PICTURE_STORAGE": ""
             }
         }

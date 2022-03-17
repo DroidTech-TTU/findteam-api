@@ -5,8 +5,9 @@ FindTeam Pydantic schemas
 from datetime import datetime
 
 from pydantic import BaseModel
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from .models import MembershipType, Status
+from .models import MembershipType, Status, Tag, User, UserUrl
 
 
 class RegisterRequestModel(BaseModel):
@@ -78,6 +79,13 @@ class UserResultModel(BaseModel):
     email: str
     urls: list[UrlModel]
     tags: list[TagModel]
+
+    @classmethod
+    async def from_orm(cls, user: User, async_session: AsyncSession) -> 'UserResultModel':
+        return cls(
+            urls=[UrlModel.from_orm(url) for url in await UserUrl.get_user_urls(user.uid, async_session)],
+            tags=[TagModel.from_orm(tag) for tag in await Tag.get_user_tags(user.uid, async_session)],
+            **dict(user))
 
     class Config:
         orm_mode = True

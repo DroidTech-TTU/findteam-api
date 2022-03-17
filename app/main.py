@@ -89,27 +89,27 @@ async def register(
 
 
 @app.get(
-    '/me',
+    '/user',
     response_model=schemas.UserResultModel,
     responses={
         status.HTTP_403_FORBIDDEN: {'description': 'User authorization error'}
     },
     tags=['users'])
-async def get_me(
+async def view_user(
+        uid: int = None,
         access_token: str = Depends(oauth2),
         db: AsyncSession = Depends(get_db)):
-    """Get currently logged in UserResultModel"""
+    """Return the specified UserResultModel by uid, otherwise return currently logged in user"""
     user = await models.User.from_b64_access_token(access_token, db)
     if not user:
         raise HTTPException(status_code=403)
-    return schemas.UserResultModel(
-        urls=[schemas.UrlModel.from_orm(url) for url in await models.UserUrl.get_user_urls(user.uid, db)],
-        tags=[schemas.TagModel.from_orm(tag) for tag in await models.Tag.get_user_tags(user.uid, db)],
-        **dict(user))
-
+    if uid:
+        user = await models.User.from_uid(uid, db)
+    return await schemas.UserResultModel.from_orm(user, db)
+    
 
 @app.post(
-    '/me',
+    '/user',
     responses={
         status.HTTP_200_OK: {'description': 'User info updated successfully'},
         status.HTTP_403_FORBIDDEN: {'description': 'User authorization error'}
@@ -163,7 +163,6 @@ async def post_login(
         logger.warning(f'Incorrect password for {user} ({request.client})')
         raise HTTPException(status_code=403)
     return schemas.OAuth2AccessTokenModel(access_token=user.b64_access_token)
-
 
 @app.post('/me/reset')
 async def reset_password():
