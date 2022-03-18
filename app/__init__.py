@@ -3,7 +3,7 @@ FindTeam FastAPI package
 """
 
 __author__ = 'DroidTech'
-__version__ = '0.2.12.22'
+__version__ = '0.3.18.22'
 
 import logging
 

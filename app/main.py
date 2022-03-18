@@ -11,7 +11,7 @@ from fastapi.security import (OAuth2PasswordBearer,
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from . import __version__, logger, models, schemas
+from . import __version__, logger, mail, models, schemas
 from .config import Settings, get_settings
 from .db import get_db, init_models
 
@@ -84,7 +84,8 @@ async def register(
         await db.commit()
     except SQLAlchemyError as e:
         logger.exception('Error during User registration commit')
-        raise HTTPException(status_code=500) from e
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR) from e
     return schemas.OAuth2AccessTokenModel(access_token=user.b64_access_token)
 
 
@@ -92,7 +93,9 @@ async def register(
     '/user',
     response_model=schemas.UserResultModel,
     responses={
-        status.HTTP_403_FORBIDDEN: {'description': 'User authorization error'}
+        status.HTTP_403_FORBIDDEN: {'description': 'User authorization error'},
+        status.HTTP_404_NOT_FOUND: {
+            'description': 'User not found (must be authorized for this to occur)'}
     },
     tags=['users'])
 async def view_user(
@@ -102,11 +105,28 @@ async def view_user(
     """Return the specified UserResultModel by uid, otherwise return currently logged in user"""
     user = await models.User.from_b64_access_token(access_token, db)
     if not user:
-        raise HTTPException(status_code=403)
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
     if uid:
         user = await models.User.from_uid(uid, db)
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
     return await schemas.UserResultModel.from_orm(user, db)
-    
+
+
+@app.post(
+    '/user/reset',
+    tags=['users'])
+async def reset_password(
+        email: str,
+        request: Request,
+        db: AsyncSession = Depends(get_db)):
+    """Reset logged in user's password - a user may become logged in via an emailed access token during forgotten password"""
+    logger.info(f'{email} sending password reset link ({request.client})')
+    user = await models.User.from_email(email, db)
+    if user:
+        mail.send_password_reset(user)
+    return Response(status_code=status.HTTP_200_OK)
+
 
 @app.post(
     '/user',
@@ -115,17 +135,23 @@ async def view_user(
         status.HTTP_403_FORBIDDEN: {'description': 'User authorization error'}
     },
     tags=['users'])
-async def post_me(
+async def update_user(
         new_info: schemas.UserRequestModel,
+        request: Request,
         access_token: str = Depends(oauth2),
         db: AsyncSession = Depends(get_db)):
     """Process UserRequestModel"""
     user = await models.User.from_b64_access_token(access_token, db)
     if not user:
-        raise HTTPException(status_code=403)
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
     uid = user.uid
     try:
-        for key in dict(user):  # Remaining UserRequestModel attributes
+        user_dict = dict(user)
+        if user_dict.pop('password', None):
+            user.password = models.User.hash_password(
+                new_info.password)  # Handle password change
+            logger.info(f'{user} has updated their password ({request.client})')
+        for key in user_dict:  # Remaining UserRequestModel attributes
             try:
                 setattr(user, key, getattr(new_info, key))
             except AttributeError:  # Ignore extras
@@ -141,8 +167,9 @@ async def post_me(
             db)
     except SQLAlchemyError as e:
         logger.exception('Error during User update commit')
-        raise HTTPException(status_code=500) from e
-    return Response(status_code=200)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR) from e
+    return Response(status_code=status.HTTP_200_OK)
 
 
 @app.post(
@@ -161,12 +188,8 @@ async def post_login(
     user = await models.User.from_email(credentials.username, db)
     if not user or not models.User.check_password(user, credentials.password):
         logger.warning(f'Incorrect password for {user} ({request.client})')
-        raise HTTPException(status_code=403)
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
     return schemas.OAuth2AccessTokenModel(access_token=user.b64_access_token)
-
-@app.post('/me/reset')
-async def reset_password():
-    raise NotImplemented
 
 
 @app.get(

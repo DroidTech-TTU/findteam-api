@@ -27,6 +27,7 @@ class Base(_Base):
     __abstract__ = True
 
     def __iter__(self):
+        """Allow iterating over key/value tuples"""
         return iter((c.key, getattr(self, c.key)) for c in inspect(self).mapper.column_attrs)
 
 

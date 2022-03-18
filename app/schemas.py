@@ -118,6 +118,7 @@ class UserRequestModel(BaseModel):
     middle_name: str | None
     last_name: str
     email: str
+    password: str | None
     urls: list[UrlModel]
     tags: list[TagModel]
 
@@ -128,6 +129,7 @@ class UserRequestModel(BaseModel):
                 'middle_name': '',
                 'last_name': 'E',
                 'email': 'user@site.com',
+                'password': 'hunter2',
                 'urls': [
                     {
                         'domain': 'github.com',

@@ -86,7 +86,7 @@ class User(Base):
         return f'#{self.uid} {self.first_name} {self.last_name}'
 
     @property
-    def b64_access_token(self):
+    def b64_access_token(self) -> bytes:
         """Return self.access_token as base64 encoded string"""
         return b64encode(self.access_token)
 
