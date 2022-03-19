@@ -71,8 +71,8 @@ class User(Base):
         LargeBinary(length=60),
         nullable=False)
     picture = Column(
-        # 32 characters in sha-256 hash + 4 for .png (320x320)
-        String(length=32+4),
+        # 672ce0696eb32fa4665231f0867254ac672abadf354d9330a075c9432a30352a.png
+        String(length=68),
         nullable=True)
     access_token = Column(
         LargeBinary(length=16),
@@ -294,8 +294,9 @@ class ProjectPicture(Base):
             ondelete='CASCADE'),
         primary_key=True)
     picture = Column(
-        String(length=32+4),
-        primary_key=True)  # 32 characters in sha-256 hash + 4 for .png (1080x1080)
+        # 672ce0696eb32fa4665231f0867254ac672abadf354d9330a075c9432a30352a.png
+        String(length=68),
+        primary_key=True)
 
 
 class ProjectTagged(Base):
@@ -389,4 +390,4 @@ class Message(Base):
                 stmt = await async_session.execute(select(join(User, UserUrl)).where(User.uid == uid and UserUrl.uid == uid))
                 return stmt.all()
             except NoResultFound:
-                return list() # TODO finish
+                return list()  # TODO finish

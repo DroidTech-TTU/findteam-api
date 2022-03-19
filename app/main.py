@@ -2,9 +2,11 @@
 FindTeam FastAPI app
 """
 
+from hashlib import sha256
 from logging import Formatter, StreamHandler
 
-from fastapi import Depends, FastAPI, HTTPException, Request, status
+from fastapi import (Depends, FastAPI, HTTPException, Request, UploadFile,
+                     status)
 from fastapi.responses import FileResponse, RedirectResponse, Response
 from fastapi.security import (OAuth2PasswordBearer,
                               OAuth2PasswordRequestFormStrict)
@@ -222,7 +224,7 @@ async def get_chat_history(
         pid: int = None,
         access_token: str = Depends(oauth2),
         db: AsyncSession = Depends(get_db)):
-    """List Messages of logged in user in dm with uid or pid"""
+    """List MessageResultModels of logged in user in dm with uid or pid"""
     user = await models.User.from_b64_access_token(access_token, db)
     if not user:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
@@ -235,10 +237,11 @@ async def get_chat_history(
         status.HTTP_403_FORBIDDEN: {'description': 'User authorization error'}
     },
     tags=['chats'])
-async def send_chat(
+async def send_message(
         msg: schemas.MessageRequestModel,
         access_token: str = Depends(oauth2),
         db: AsyncSession = Depends(get_db)):
+    """Send MessageRequestModel from logged in User"""
     raise NotImplemented
 
 
@@ -251,3 +254,34 @@ async def get_picture(
         settings: Settings = Depends(get_settings)):
     """Return picture file"""
     return FileResponse(settings.picture_storage / filename)
+
+
+@app.post(
+    '/user/picture',
+    responses={
+        status.HTTP_403_FORBIDDEN: {'description': 'User authorization error'},
+        status.HTTP_422_UNPROCESSABLE_ENTITY: {
+            'description': 'Invalid content type uploaded - must be image/png'}
+    },
+    tags=['pictures', 'users'])
+async def upload_user_picture(
+        picture: UploadFile,
+        settings: Settings = Depends(get_settings),
+        access_token: str = Depends(oauth2),
+        db: AsyncSession = Depends(get_db)):
+    """Upload logged in User's profile picture"""
+    user = await models.User.from_b64_access_token(access_token, db)
+    if not user:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
+    if picture.content_type != 'image/png':
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY)
+    picture_data = picture.file.read()
+    local_file = (settings.picture_storage /
+                  sha256(picture_data).hexdigest()).with_suffix('.png')
+    if not local_file.exists():
+        with local_file.open('wb') as f:
+            f.write(picture_data)
+    logger.debug(f'{local_file.name}')
+    user.picture = local_file.name
+    await db.commit()
+    return Response(status_code=status.HTTP_200_OK)
