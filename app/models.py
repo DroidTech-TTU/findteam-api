@@ -380,3 +380,13 @@ class Message(Base):
 
     def __str__(self):
         return f'#{self.id}: {self.text}'
+
+    @classmethod
+    async def get_user_dms(cls, uid: int, async_session: AsyncSession):
+        """Return the Messages sent to a user by any user"""
+        async with async_session.begin():
+            try:
+                stmt = await async_session.execute(select(join(User, UserUrl)).where(User.uid == uid and UserUrl.uid == uid))
+                return stmt.all()
+            except NoResultFound:
+                return list() # TODO finish

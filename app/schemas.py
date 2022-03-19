@@ -171,7 +171,29 @@ class ProjectModel(BaseModel):
         }
 
 
-class MessageModel(BaseModel):
+class ChatModel(BaseModel):
+    is_read: bool
+    date: datetime
+    text: str
+    from_user: UserResultModel
+
+
+class MessageRequestModel(BaseModel):
+    text: str
+    to_uid: int | None
+    to_pid: int | None
+
+    class Config:
+        schema_extra = {
+            'example': {
+                'text': 'Hi John',
+                'to_uid': 22,
+                'to_pid': None
+            }
+        }
+
+
+class MessageResultModel(BaseModel):
     id: int
     is_read: bool
     date: datetime
@@ -181,3 +203,19 @@ class MessageModel(BaseModel):
 
     class Config:
         orm_mode = True
+        schema_extra = {
+            'example': {
+                'id': 123,
+                'is_read': True,
+                'date': datetime(year=1969, month=4, day=20),
+                'text': 'Hi John',
+                'from_user': UserResultModel.Config.schema_extra['example'],
+                'to': {
+                    'uid': 22,
+                    'first_name': 'John',
+                    'middle_name': 'L',
+                    'last_name': 'M',
+                    'email': 'john@gmail.com'
+                }
+            }
+        }

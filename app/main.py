@@ -150,7 +150,8 @@ async def update_user(
         if user_dict.pop('password', None):
             user.password = models.User.hash_password(
                 new_info.password)  # Handle password change
-            logger.info(f'{user} has updated their password ({request.client})')
+            logger.info(
+                f'{user} has updated their password ({request.client})')
         for key in user_dict:  # Remaining UserRequestModel attributes
             try:
                 setattr(user, key, getattr(new_info, key))
@@ -180,7 +181,7 @@ async def update_user(
             'description': 'Email not found or password not correct'}
     },
     tags=['users'])
-async def post_login(
+async def login(
         request: Request,
         credentials: OAuth2PasswordRequestFormStrict = Depends(),
         db: AsyncSession = Depends(get_db)):
@@ -190,6 +191,55 @@ async def post_login(
         logger.warning(f'Incorrect password for {user} ({request.client})')
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
     return schemas.OAuth2AccessTokenModel(access_token=user.b64_access_token)
+
+
+@app.get(
+    '/chats',
+    response_model=list[schemas.ChatModel],
+    responses={
+        status.HTTP_403_FORBIDDEN: {'description': 'User authorization error'}
+    },
+    tags=['chats'])
+async def get_chat_list(
+        access_token: str = Depends(oauth2),
+        db: AsyncSession = Depends(get_db)):
+    """List ChatModels of logged in user"""
+    user = await models.User.from_b64_access_token(access_token, db)
+    if not user:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
+    raise NotImplemented
+
+
+@app.get(
+    '/chat',
+    response_model=list[schemas.MessageResultModel],
+    responses={
+        status.HTTP_403_FORBIDDEN: {'description': 'User authorization error'}
+    },
+    tags=['chats'])
+async def get_chat_history(
+        uid: int = None,
+        pid: int = None,
+        access_token: str = Depends(oauth2),
+        db: AsyncSession = Depends(get_db)):
+    """List Messages of logged in user in dm with uid or pid"""
+    user = await models.User.from_b64_access_token(access_token, db)
+    if not user:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
+    raise NotImplemented
+
+
+@app.post(
+    '/chat',
+    responses={
+        status.HTTP_403_FORBIDDEN: {'description': 'User authorization error'}
+    },
+    tags=['chats'])
+async def send_chat(
+        msg: schemas.MessageRequestModel,
+        access_token: str = Depends(oauth2),
+        db: AsyncSession = Depends(get_db)):
+    raise NotImplemented
 
 
 @app.get(
