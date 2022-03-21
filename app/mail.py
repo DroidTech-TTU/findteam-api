@@ -1,3 +1,7 @@
+"""
+Email sending functions for User verification flows
+"""
+
 from email.message import EmailMessage
 from smtplib import SMTP_SSL
 from urllib.parse import urlencode
@@ -10,7 +14,7 @@ address = _settings.email_address
 password = _settings.email_password
 
 
-def send_password_reset(user: User):
+def send_password_reset(user: User) -> None:
     """Send password reset email to User via FindTeam gmail SMTP"""
     msg = EmailMessage()
     # TODO: Fill in Android password reset URI
