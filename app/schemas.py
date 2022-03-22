@@ -11,6 +11,7 @@ from .models import MembershipType, Status, Tag, User, UserUrl
 
 
 class RegisterRequestModel(BaseModel):
+    """User registration schema"""
     first_name: str
     middle_name: str | None
     last_name: str
@@ -30,6 +31,7 @@ class RegisterRequestModel(BaseModel):
 
 
 class OAuth2AccessTokenModel(BaseModel):
+    """OAuth2 access token schema"""
     access_token: str
     token_type: str = 'Bearer'
 
@@ -43,6 +45,7 @@ class OAuth2AccessTokenModel(BaseModel):
 
 
 class TagModel(BaseModel):
+    """User or Project Tag schema"""
     text: str
     category: str
 
@@ -57,6 +60,7 @@ class TagModel(BaseModel):
 
 
 class UrlModel(BaseModel):
+    """User linked profile schema"""
     domain: str
     path: str
 
@@ -71,6 +75,7 @@ class UrlModel(BaseModel):
 
 
 class UserResultModel(BaseModel):
+    """User profile data retrieval schema"""
     uid: int
     first_name: str
     middle_name: str | None
@@ -82,9 +87,12 @@ class UserResultModel(BaseModel):
 
     @classmethod
     async def from_orm(cls, user: User, async_session: AsyncSession) -> 'UserResultModel':
+        """Fetch User data into schema"""
         return cls(
-            urls=[UrlModel.from_orm(url) for url in await UserUrl.get_user_urls(user.uid, async_session)],
-            tags=[TagModel.from_orm(tag) for tag in await Tag.get_user_tags(user.uid, async_session)],
+            urls=[UrlModel.from_orm(url) for url in
+                  await UserUrl.get_user_urls(user.uid, async_session)],
+            tags=[TagModel.from_orm(tag) for tag in
+                  await Tag.get_user_tags(user.uid, async_session)],
             **dict(user))
 
     class Config:
@@ -114,6 +122,7 @@ class UserResultModel(BaseModel):
 
 
 class UserRequestModel(BaseModel):
+    """User profile data update schema"""
     first_name: str
     middle_name: str | None
     last_name: str
@@ -146,14 +155,31 @@ class UserRequestModel(BaseModel):
         }
 
 
+class ProjectMember(BaseModel):
+    """User project membership schema"""
+    uid: int
+    pid: int
+    membership_type: MembershipType
+
+    class Config:
+        schema_extra = {
+            'example': {
+                'uid': 22,
+                'pid': 21,
+                'membership_type': MembershipType.ADMIN
+            }
+        }
+
+
 class ProjectModel(BaseModel):
+    """Project schema"""
     pid: int
     title: str
     status: Status
     description: str
     pictures: list[str]
-    members: set[UserResultModel]
-    owner: UserResultModel
+    members: set[ProjectMember]
+    owner_uid: int
     tags: list[TagModel]
 
     class Config:
@@ -166,12 +192,21 @@ class ProjectModel(BaseModel):
                 'description': 'This project is very cool. Please join.',
                 'pictures': [
                     '8f434346648f6b96df89dda901c5176b10a6d83961dd3c1ac88b59b2dc327aa4.png'
-                ]
+                ],
+                'members': set([ProjectMember(
+                    uid=22,
+                    pid=21,
+                    membership_type=MembershipType.ADMIN)]),
+                'owner_uid': 21,
+                'tags': [TagModel(
+                    text='Lubbock',
+                    category='Location')]
             }
         }
 
 
 class ChatModel(BaseModel):
+    """User chat list item schema"""
     is_read: bool
     date: datetime
     text: str
@@ -179,6 +214,7 @@ class ChatModel(BaseModel):
 
 
 class MessageRequestModel(BaseModel):
+    """User to User or Project message send schema"""
     text: str
     to_uid: int | None
     to_pid: int | None
@@ -194,6 +230,7 @@ class MessageRequestModel(BaseModel):
 
 
 class MessageResultModel(BaseModel):
+    """User to User or Project message retrieval schema"""
     id: int
     is_read: bool
     date: datetime

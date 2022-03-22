@@ -73,7 +73,7 @@ async def index():
     tags=['users'])
 async def register(
         credentials: schemas.RegisterRequestModel,
-        db: AsyncSession = Depends(get_db)):
+        async_session: AsyncSession = Depends(get_db)):
     """Process RegisterRequestModel to return LoginTokenModel"""
     user = models.User(
         first_name=credentials.first_name,
@@ -81,13 +81,13 @@ async def register(
         last_name=credentials.last_name,
         email=credentials.email,
         password=models.User.hash_password(credentials.password))
-    db.add(user)
+    async_session.add(user)
     try:
-        await db.commit()
-    except SQLAlchemyError as e:
+        await async_session.commit()
+    except SQLAlchemyError as exception:
         logger.exception('Error during User registration commit')
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR) from e
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR) from exception
     return schemas.OAuth2AccessTokenModel(access_token=user.b64_access_token)
 
 
@@ -103,16 +103,16 @@ async def register(
 async def view_user(
         uid: int = None,
         access_token: str = Depends(oauth2),
-        db: AsyncSession = Depends(get_db)):
+        async_session: AsyncSession = Depends(get_db)):
     """Return the specified UserResultModel by uid, otherwise return currently logged in user"""
-    user = await models.User.from_b64_access_token(access_token, db)
+    user = await models.User.from_b64_access_token(access_token, async_session)
     if not user:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
     if uid:
-        user = await models.User.from_uid(uid, db)
+        user = await models.User.from_uid(uid, async_session)
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
-    return await schemas.UserResultModel.from_orm(user, db)
+    return await schemas.UserResultModel.from_orm(user, async_session)
 
 
 @app.post(
@@ -121,10 +121,12 @@ async def view_user(
 async def reset_password(
         email: str,
         request: Request,
-        db: AsyncSession = Depends(get_db)):
-    """Reset logged in user's password - a user may become logged in via an emailed access token during forgotten password"""
-    logger.info(f'{email} sending password reset link ({request.client})')
-    user = await models.User.from_email(email, db)
+        async_session: AsyncSession = Depends(get_db)):
+    """Reset logged in user's password -
+    a user may become logged in via an emailed access token during forgotten password"""
+    logger.info('%s sending password reset link (%s)',
+                email, request.client.host)
+    user = await models.User.from_email(email, async_session)
     if user:
         mail.send_password_reset(user)
     return Response(status_code=status.HTTP_200_OK)
@@ -141,9 +143,9 @@ async def update_user(
         new_info: schemas.UserRequestModel,
         request: Request,
         access_token: str = Depends(oauth2),
-        db: AsyncSession = Depends(get_db)):
+        async_session: AsyncSession = Depends(get_db)):
     """Process UserRequestModel"""
-    user = await models.User.from_b64_access_token(access_token, db)
+    user = await models.User.from_b64_access_token(access_token, async_session)
     if not user:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
     uid = user.uid
@@ -152,26 +154,26 @@ async def update_user(
         if user_dict.pop('password', None):
             user.password = models.User.hash_password(
                 new_info.password)  # Handle password change
-            logger.info(
-                f'{user} has updated their password ({request.client})')
+            logger.info('%s has updated their password (%s)',
+                        user, request.client.host)
         for key in user_dict:  # Remaining UserRequestModel attributes
             try:
                 setattr(user, key, getattr(new_info, key))
             except AttributeError:  # Ignore extras
                 pass
-        await db.commit()
+        await async_session.commit()
         await models.Tag.set_user_tags(
             uid,
             [dict(tag_dict) for tag_dict in new_info.tags],
-            db)
+            async_session)
         await models.UserUrl.set_user_urls(
             uid,
             [dict(url_model) for url_model in new_info.urls],
-            db)
-    except SQLAlchemyError as e:
+            async_session)
+    except SQLAlchemyError as exception:
         logger.exception('Error during User update commit')
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR) from e
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR) from exception
     return Response(status_code=status.HTTP_200_OK)
 
 
@@ -186,11 +188,12 @@ async def update_user(
 async def login(
         request: Request,
         credentials: OAuth2PasswordRequestFormStrict = Depends(),
-        db: AsyncSession = Depends(get_db)):
+        async_session: AsyncSession = Depends(get_db)):
     """Process LoginRequestModel to return LoginTokenModel"""
-    user = await models.User.from_email(credentials.username, db)
+    user = await models.User.from_email(credentials.username, async_session)
     if not user or not models.User.check_password(user, credentials.password):
-        logger.warning(f'Incorrect password for {user} ({request.client})')
+        logger.warning('Incorrect password for %s (%s)',
+                       user, request.client.host)
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
     return schemas.OAuth2AccessTokenModel(access_token=user.b64_access_token)
 
@@ -204,12 +207,12 @@ async def login(
     tags=['chats'])
 async def get_chat_list(
         access_token: str = Depends(oauth2),
-        db: AsyncSession = Depends(get_db)):
+        async_session: AsyncSession = Depends(get_db)):
     """List ChatModels of logged in user"""
-    user = await models.User.from_b64_access_token(access_token, db)
+    user = await models.User.from_b64_access_token(access_token, async_session)
     if not user:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
-    raise NotImplemented
+    raise NotImplementedError
 
 
 @app.get(
@@ -223,12 +226,12 @@ async def get_chat_history(
         uid: int = None,
         pid: int = None,
         access_token: str = Depends(oauth2),
-        db: AsyncSession = Depends(get_db)):
+        async_session: AsyncSession = Depends(get_db)):
     """List MessageResultModels of logged in user in dm with uid or pid"""
-    user = await models.User.from_b64_access_token(access_token, db)
+    user = await models.User.from_b64_access_token(access_token, async_session)
     if not user:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
-    raise NotImplemented
+    raise NotImplementedError
 
 
 @app.post(
@@ -240,9 +243,9 @@ async def get_chat_history(
 async def send_message(
         msg: schemas.MessageRequestModel,
         access_token: str = Depends(oauth2),
-        db: AsyncSession = Depends(get_db)):
+        async_session: AsyncSession = Depends(get_db)):
     """Send MessageRequestModel from logged in User"""
-    raise NotImplemented
+    raise NotImplementedError
 
 
 @app.get(
@@ -266,22 +269,24 @@ async def get_picture(
     tags=['pictures', 'users'])
 async def upload_user_picture(
         picture: UploadFile,
+        request: Request,
         settings: Settings = Depends(get_settings),
         access_token: str = Depends(oauth2),
-        db: AsyncSession = Depends(get_db)):
+        async_session: AsyncSession = Depends(get_db)):
     """Upload logged in User's profile picture"""
-    user = await models.User.from_b64_access_token(access_token, db)
+    user = await models.User.from_b64_access_token(access_token, async_session)
     if not user:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
     if picture.content_type != 'image/png':
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY)
     picture_data = picture.file.read()
-    local_file = (settings.picture_storage /
-                  sha256(picture_data).hexdigest()).with_suffix('.png')
-    if not local_file.exists():
-        with local_file.open('wb') as f:
-            f.write(picture_data)
-    logger.debug(f'{local_file.name}')
-    user.picture = local_file.name
-    await db.commit()
+    local_file_path = (settings.picture_storage /
+                       sha256(picture_data).hexdigest()).with_suffix('.png')
+    if not local_file_path.exists():
+        with local_file_path.open('wb') as local_file:
+            local_file.write(picture_data)
+    logger.debug('%s uploaded %s (%s)', user,
+                 local_file_path, request.client.host)
+    user.picture = local_file_path.name
+    await async_session.commit()
     return Response(status_code=status.HTTP_200_OK)

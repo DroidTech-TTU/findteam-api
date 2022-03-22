@@ -9,16 +9,15 @@ from random import randbytes
 from typing import Optional
 
 from bcrypt import checkpw, gensalt, hashpw
-from sqlalchemy import Column, ForeignKey, delete, insert, update
+from sqlalchemy import Column, ForeignKey, delete
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from sqlalchemy.orm import join, relationship, selectinload
+from sqlalchemy.orm import join, relationship
 from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy.types import (Boolean, DateTime, Enum, Integer, LargeBinary,
                               String)
 
-from . import logger
 from .db import Base
 
 
@@ -49,6 +48,7 @@ class Status(IntEnum):
 
 
 class User(Base):
+    """USER sqlalchemy orm"""
     __tablename__ = 'USER'
     uid = Column(
         Integer(),
@@ -91,12 +91,16 @@ class User(Base):
         return b64encode(self.access_token)
 
     async def get_owned_projects(self, async_session: AsyncSession) -> list['Project']:
+        """List Projects owned by this User"""
         async with async_session.begin():
-            return (await async_session.execute(select(Project).where(Project.owner_uid == self.uid))).values()
+            return (await async_session.execute(
+                select(Project).where(Project.owner_uid == self.uid))).values()
 
     async def get_membership_projects(self, async_session: AsyncSession) -> list['Project']:
+        """List Projects this User is a member or applicant of (not owner)"""
         async with async_session.begin():
-            memberships = (await async_session.execute(select(ProjectMembership).where(ProjectMembership.uid == self.uid and ProjectMembership.permission > MembershipType.NOTHING))).values()
+            memberships = (await async_session.execute(select(ProjectMembership).where(
+                ProjectMembership.uid == self.uid))).values()
             return [membership.project for membership in memberships]
 
     def check_password(self, password: str) -> bool:
@@ -143,6 +147,7 @@ class User(Base):
 
 
 class UserUrl(Base):
+    """USER_URL sqlalchemy orm"""
     __tablename__ = 'USER_URL'
     uid = Column(
         Integer(),
@@ -166,7 +171,7 @@ class UserUrl(Base):
                 stmt = await async_session.execute(select(join(User, UserUrl)).where(User.uid == uid and UserUrl.uid == uid))
                 return stmt.all()
             except NoResultFound:
-                return list()
+                return []
 
     @classmethod
     async def set_user_urls(cls, uid: int, urls: list[dict], async_session: AsyncSession):
@@ -181,6 +186,7 @@ class UserUrl(Base):
 
 
 class Tag(Base):
+    """TAG sqlalchemy orm"""
     __tablename__ = 'TAG'
     text = Column(
         String(128),
@@ -200,7 +206,7 @@ class Tag(Base):
                 stmt = await async_session.execute(select(join(join(User, UserTagged), Tag)).where(User.uid == uid and UserTagged.uid == uid and Tag.text == UserTagged.tag_text))
                 return stmt.all()
             except NoResultFound:
-                return list()
+                return []
 
     @staticmethod
     async def set_user_tags(uid: int, tags: list[dict], async_session: AsyncSession):
@@ -222,6 +228,7 @@ class Tag(Base):
 
 
 class UserTagged(Base):
+    """USER_TAGGED sqlalchemy orm"""
     __tablename__ = 'USER_TAGGED'
     uid = Column(
         Integer(),
@@ -250,6 +257,7 @@ class UserTagged(Base):
 
 
 class Project(Base):
+    """PROJECT sqlalchemy orm"""
     __tablename__ = 'PROJECT'
     pid = Column(
         Integer(),
@@ -285,6 +293,7 @@ class Project(Base):
 
 
 class ProjectPicture(Base):
+    """PROJECT_PICTURE sqlalchemy orm"""
     __tablename__ = 'PROJECT_PICTURE'
     pid = Column(
         Integer(),
@@ -300,6 +309,7 @@ class ProjectPicture(Base):
 
 
 class ProjectTagged(Base):
+    """PROJECT_TAGGED sqlalchemy orm"""
     __tablename__ = 'PROJECT_TAGGED'
     pid = Column(
         Integer(),
@@ -321,6 +331,7 @@ class ProjectTagged(Base):
 
 
 class ProjectMembership(Base):
+    """PROJECT_MEMBERSHIP sqlalchemy orm"""
     __tablename__ = 'PROJECT_MEMBERSHIP'
     pid = Column(
         Integer(),
@@ -342,6 +353,7 @@ class ProjectMembership(Base):
 
 
 class Message(Base):
+    """MESSAGE sqlalchemy orm"""
     __tablename__ = 'MESSAGE'
     id = Column(
         Integer(),
@@ -387,7 +399,8 @@ class Message(Base):
         """Return the Messages sent to a user by any user"""
         async with async_session.begin():
             try:
-                stmt = await async_session.execute(select(join(User, UserUrl)).where(User.uid == uid and UserUrl.uid == uid))
+                stmt = await async_session.execute(select(join(User, UserUrl)).where(
+                    User.uid == uid and UserUrl.uid == uid))
                 return stmt.all()
             except NoResultFound:
-                return list()  # TODO finish
+                return []  # TODO finish

@@ -28,7 +28,7 @@ class Settings(BaseSettings):
     email_password: str = Field(env='EMAIL_PASSWORD')
 
     def __str__(self):
-        return f'{self.repo_name} - db_url={self.db_url}, create_tables={self.create_tables}, picture_storage={self.picture_storage}'
+        return '\n'.join(f'{k}: {v}' for k, v in self.dict())
 
 
 @lru_cache()
