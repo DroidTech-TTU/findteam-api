@@ -178,7 +178,7 @@ class ProjectModel(BaseModel):
     status: Status
     description: str
     pictures: list[str]
-    members: set[ProjectMember]
+    members: list[ProjectMember]
     owner_uid: int
     tags: list[TagModel]
 
@@ -193,24 +193,16 @@ class ProjectModel(BaseModel):
                 'pictures': [
                     '8f434346648f6b96df89dda901c5176b10a6d83961dd3c1ac88b59b2dc327aa4.png'
                 ],
-                'members': set([ProjectMember(
+                'members': [ProjectMember(
                     uid=22,
                     pid=21,
-                    membership_type=MembershipType.ADMIN)]),
+                    membership_type=MembershipType.ADMIN)],
                 'owner_uid': 21,
                 'tags': [TagModel(
                     text='Lubbock',
                     category='Location')]
             }
         }
-
-
-class ChatModel(BaseModel):
-    """User chat list item schema"""
-    is_read: bool
-    date: datetime
-    text: str
-    from_user: UserResultModel
 
 
 class MessageRequestModel(BaseModel):
@@ -235,8 +227,9 @@ class MessageResultModel(BaseModel):
     is_read: bool
     date: datetime
     text: str
-    from_user: UserResultModel
-    to: UserResultModel | ProjectModel
+    from_uid: int
+    to_uid: int | None
+    to_pid: int | None
 
     class Config:
         orm_mode = True
@@ -246,13 +239,7 @@ class MessageResultModel(BaseModel):
                 'is_read': True,
                 'date': datetime(year=1969, month=4, day=20),
                 'text': 'Hi John',
-                'from_user': UserResultModel.Config.schema_extra['example'],
-                'to': {
-                    'uid': 22,
-                    'first_name': 'John',
-                    'middle_name': 'L',
-                    'last_name': 'M',
-                    'email': 'john@gmail.com'
-                }
+                'from_uid': 21,
+                'to_uid': 22
             }
         }

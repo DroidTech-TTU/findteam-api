@@ -28,7 +28,7 @@ class Settings(BaseSettings):
     email_password: str = Field(env='EMAIL_PASSWORD')
 
     def __str__(self):
-        return '\n'.join(f'{k}: {v}' for k, v in self.dict())
+        return '\n'.join(f'{k}: {v}' for k, v in self.dict().items())
 
 
 @lru_cache()

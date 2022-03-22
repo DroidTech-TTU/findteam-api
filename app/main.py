@@ -200,7 +200,7 @@ async def login(
 
 @app.get(
     '/chats',
-    response_model=list[schemas.ChatModel],
+    response_model=list[schemas.MessageResultModel],
     responses={
         status.HTTP_403_FORBIDDEN: {'description': 'User authorization error'}
     },
@@ -208,7 +208,7 @@ async def login(
 async def get_chat_list(
         access_token: str = Depends(oauth2),
         async_session: AsyncSession = Depends(get_db)):
-    """List ChatModels of logged in user"""
+    """List the most recent direct message (chat) from every user to logged in user"""
     user = await models.User.from_b64_access_token(access_token, async_session)
     if not user:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
