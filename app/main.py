@@ -2,6 +2,7 @@
 FindTeam FastAPI app
 """
 
+from datetime import datetime
 from hashlib import sha256
 from logging import Formatter, StreamHandler
 
@@ -200,7 +201,7 @@ async def login(
 
 @app.get(
     '/chats',
-    response_model=list[schemas.MessageResultModel],
+    response_model=set[int],
     responses={
         status.HTTP_403_FORBIDDEN: {'description': 'User authorization error'}
     },
@@ -208,11 +209,11 @@ async def login(
 async def get_chat_list(
         access_token: str = Depends(oauth2),
         async_session: AsyncSession = Depends(get_db)):
-    """List the most recent direct message (chat) from every user to logged in user"""
+    """List active direct message uids between current user"""
     user = await models.User.from_b64_access_token(access_token, async_session)
     if not user:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
-    raise NotImplementedError
+    return await models.Message.get_recent_dms(user.uids, async_session)
 
 
 @app.get(
@@ -245,7 +246,23 @@ async def send_message(
         access_token: str = Depends(oauth2),
         async_session: AsyncSession = Depends(get_db)):
     """Send MessageRequestModel from logged in User"""
-    raise NotImplementedError
+    user = await models.User.from_b64_access_token(access_token, async_session)
+    if not user:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
+    message = models.Message(
+        from_uid=user.uid,
+        to_uid=msg.to_uid,
+        to_pid=msg.to_pid,
+        date=datetime.now(),
+        text=msg.text,
+        is_read=False)
+    async_session.add(message)
+    try:
+        await async_session.commit()
+    except SQLAlchemyError as exception:
+        logger.exception('Error during Message send commit')
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR) from exception
 
 
 @app.get(

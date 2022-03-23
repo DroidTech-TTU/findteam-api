@@ -9,7 +9,7 @@ from random import randbytes
 from typing import Optional
 
 from bcrypt import checkpw, gensalt, hashpw
-from sqlalchemy import Column, ForeignKey, delete
+from sqlalchemy import Column, ForeignKey, delete, union_all
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
@@ -291,6 +291,17 @@ class Project(Base):
         """pid title"""
         return f'#{self.pid} {self.title}'
 
+    @classmethod
+    async def from_pid(cls, pid: int, async_session: AsyncSession) -> Optional['Project']:
+        """Return the Project by the project id"""
+        async with async_session.begin():
+            try:
+                stmt = await async_session.execute(select(cls).where(cls.pid == pid))
+                result = stmt.one()
+                return result[0]
+            except NoResultFound:
+                return None
+
 
 class ProjectPicture(Base):
     """PROJECT_PICTURE sqlalchemy orm"""
@@ -395,12 +406,9 @@ class Message(Base):
         return f'#{self.id}: {self.text}'
 
     @classmethod
-    async def get_user_dms(cls, uid: int, async_session: AsyncSession):
-        """Return the Messages sent to a user by any user"""
+    async def get_recent_dms(cls, uid: int, async_session: AsyncSession):
+        """Return uids of active dms sent between uid by any user"""
         async with async_session.begin():
-            try:
-                stmt = await async_session.execute(select(join(User, UserUrl)).where(
-                    User.uid == uid and UserUrl.uid == uid))
-                return stmt.all()
-            except NoResultFound:
-                return []  # TODO finish
+            stmt = await async_session.execute(
+                select(cls.to_uid).where(cls.from_uid == uid).order_by(cls.date))
+            return set(item[0] for item in stmt.all())
