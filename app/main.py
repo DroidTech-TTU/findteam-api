@@ -231,19 +231,25 @@ async def get_chat_history(
         access_token: str = Depends(oauth2),
         async_session: AsyncSession = Depends(get_db)):
     """List MessageResultModels of logged in user in chat with uid or pid"""
-    if not uid and not pid:
+    if not (bool(uid) ^ bool(pid)):
         raise HTTPException(status_code=status.HTTP_406_NOT_ACCEPTABLE)
     user = await models.User.from_b64_access_token(access_token, async_session)
     if not user:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
-    chat_history = await models.Message.get_chat_history(
-        user.uid,
-        async_session,
-        to_uid=uid,
-        to_pid=pid)
+    if uid:
+        chat_history = await models.Message.get_user_chat_history(
+            user.uid,
+            uid,
+            async_session)
+    else:
+        chat_history = await models.Message.get_project_chat_history(
+            pid,
+            async_session)
     results = []
     for message in chat_history:
         if message.to_uid == user.uid:
+            message.is_read = True
+        elif message.to_pid:
             message.is_read = True
         results.append(schemas.MessageResultModel.from_orm(message))
     return results
@@ -252,7 +258,9 @@ async def get_chat_history(
 @app.post(
     '/chat',
     responses={
-        status.HTTP_403_FORBIDDEN: {'description': 'User authorization error'}
+        status.HTTP_403_FORBIDDEN: {'description': 'User authorization error'},
+        status.HTTP_406_NOT_ACCEPTABLE: {
+            'description': 'msg to_uid XOR to_pid must be specified'}
     },
     tags=['chats'])
 async def send_message(
@@ -260,6 +268,8 @@ async def send_message(
         access_token: str = Depends(oauth2),
         async_session: AsyncSession = Depends(get_db)):
     """Send MessageRequestModel from logged in User"""
+    if not (bool(msg.to_uid) ^ bool(msg.to_pid)):
+        raise HTTPException(status_code=status.HTTP_406_NOT_ACCEPTABLE)
     user = await models.User.from_b64_access_token(access_token, async_session)
     if not user:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
@@ -271,12 +281,30 @@ async def send_message(
         text=msg.text,
         is_read=False)
     async_session.add(message)
-    try:
-        await async_session.commit()
-    except SQLAlchemyError as exception:
-        logger.exception('Error during Message send commit')
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR) from exception
+    await async_session.commit()
+    return Response(status_code=status.HTTP_200_OK)
+
+
+@app.delete(
+    '/chat',
+    responses={
+        status.HTTP_403_FORBIDDEN: {'description': 'User authorization error'},
+        status.HTTP_401_UNAUTHORIZED: {
+            'description': 'User unauthorized to delete other user messages'}
+    },
+    tags=['chats']
+)
+async def delete_chat_history(
+        uid: int,
+        access_token: str = Depends(oauth2),
+        async_session: AsyncSession = Depends(get_db)):
+    """Delete all chat history between current user and uid"""
+    user = await models.User.from_b64_access_token(access_token, async_session)
+    if not user:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
+    await models.Message.delete_chat_history(user.uid, uid, async_session)
+    await async_session.commit()
+    return Response(status_code=status.HTTP_200_OK)
 
 
 @app.get(

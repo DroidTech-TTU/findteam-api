@@ -9,7 +9,7 @@ from random import randbytes
 from typing import Optional
 
 from bcrypt import checkpw, gensalt, hashpw
-from sqlalchemy import Column, ForeignKey, delete
+from sqlalchemy import Column, ForeignKey, delete, or_, and_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
@@ -159,13 +159,10 @@ class UserUrl(Base):
     async def get_user_urls(cls, uid: int, async_session: AsyncSession) -> list['UserUrl']:
         """Return the UserUrls associated with a User ID"""
         async with async_session.begin():
-            try:
-                stmt = await async_session.execute(
-                    select(join(User, cls)).
-                    where(User.uid == uid and cls.uid == uid))
-                return stmt.all()
-            except NoResultFound:
-                return []
+            stmt = await async_session.execute(
+                select(join(User, cls)).
+                where(User.uid == uid, cls.uid == uid))
+            return stmt.all()
 
     @classmethod
     async def set_user_urls(cls, uid: int, urls: list[dict], async_session: AsyncSession):
@@ -197,19 +194,14 @@ class Tag(Base):
         """Return the Tags associated with a User or Project ID"""
         assert (uid or pid) and not (uid and pid)  # uid XOR pid
         async with async_session.begin():
-            try:
-                stmt = select(join(join(User, UserTagged)
-                              if uid else join(Project, ProjectTagged), Tag))
-                if uid:
-                    stmt = stmt.where(
-                        User.uid == uid and UserTagged.uid == uid)
-                else:
-                    stmt = stmt.where(
-                        Project.pid == pid and ProjectTagged.pid == pid)
-                result = await async_session.execute(stmt.where(Tag.text == UserTagged.tag_text))
-                return result.all()
-            except NoResultFound:
-                return []
+            stmt = select(join(join(User, UserTagged)
+                               if uid else join(Project, ProjectTagged), Tag))
+            if uid:
+                stmt = stmt.where(User.uid == uid, UserTagged.uid == uid)
+            else:
+                stmt = stmt.where(Project.pid == pid, ProjectTagged.pid == pid)
+            result = await async_session.execute(stmt.where(Tag.text == UserTagged.tag_text))
+            return result.all()
 
     @staticmethod
     async def set_tags(uid: int, tags: list[dict], async_session: AsyncSession):
@@ -324,13 +316,10 @@ class ProjectPicture(Base):
     @classmethod
     async def get_project_pictures(cls, pid: int, async_session: AsyncSession) -> list[str]:
         async with async_session.begin():
-            try:
-                stmt = await async_session.execute(
-                    select(join(Project, cls)).
-                    where(Project.pid == pid and cls.pid == pid))
-                return [item.picture for item in stmt.all()]
-            except NoResultFound:
-                return []
+            stmt = await async_session.execute(
+                select(join(Project, cls)).
+                where(Project.pid == pid, cls.pid == pid))
+            return [item.picture for item in stmt.all()]
 
     @classmethod
     async def set_project_pictures(cls, pid: int, pictures: list[str], async_session: AsyncSession):
@@ -390,13 +379,10 @@ class ProjectMembership(Base):
     @classmethod
     async def get_project_memberships(cls, pid: int, async_session: AsyncSession) -> list['ProjectMembership']:
         async with async_session.begin():
-            try:
-                stmt = await async_session.execute(
-                    select(join(User, cls)).
-                    where(cls.pid == pid and cls.uid == User.uid))
-                return stmt.all()
-            except NoResultFound:
-                return []
+            stmt = await async_session.execute(
+                select(join(User, cls)).
+                where(cls.pid == pid, cls.uid == User.uid))
+            return stmt.all()
 
 
 class Message(Base):
@@ -442,28 +428,53 @@ class Message(Base):
         return f'#{self.id}: {self.text}'
 
     @classmethod
-    async def get_chat_list(cls, uid: int, async_session: AsyncSession):
+    async def delete_chat_history(cls, to_uid: int, from_uid: int, async_session: AsyncSession):
+        """Delete all chat history between"""
+        async with async_session.begin():
+            await async_session.execute(
+                delete(cls).
+                where(or_(and_(cls.to_uid == to_uid, cls.from_uid == from_uid),
+                          and_(cls.to_uid == from_uid, cls.from_uid == to_uid))))
+
+    @classmethod
+    async def get_chat_list(cls, uid: int, async_session: AsyncSession) -> list[int]:
         """Return uids of active dms sent between uid by any user"""
         async with async_session.begin():
             stmt = await async_session.execute(
-                select(cls.to_uid).where(cls.from_uid == uid).order_by(cls.date))
-            return set(item[0] for item in stmt.all())
+                select(cls).
+                where(or_(cls.from_uid == uid, cls.to_uid == uid)).
+                order_by(cls.date))
+            result = set()
+            for message in stmt.all():
+                result.add(message[0].to_uid)
+                result.add(message[0].from_uid)
+            result.remove(uid)
+            return result
 
     @classmethod
-    async def get_chat_history(
+    async def get_user_chat_history(
             cls,
             from_uid: int,
-            async_session: AsyncSession,
-            to_uid: int = None,
-            to_pid: int = None):
-        """Return all Messages of to and from uid"""
+            to_uid: int,
+            async_session: AsyncSession) -> list['Message']:
+        """Return all Messages to and from uid"""
         async with async_session.begin():
-            stmt = select(cls).where(cls.from_uid == from_uid)
-            if to_uid:
-                stmt = stmt.where(cls.to_uid == to_uid)
-            elif to_pid:
-                stmt = stmt.where(cls.to_pid == to_pid)
-            else:
-                raise Exception('to_uid XOR to_pid must be specified')
-            result = await async_session.execute(stmt.order_by(cls.date))
+            result = await async_session.execute(
+                select(cls).
+                where(or_(and_(cls.to_uid == to_uid, cls.from_uid == from_uid),
+                          and_(cls.to_uid == from_uid, cls.from_uid == to_uid))).
+                order_by(cls.date))
+            return [item[0] for item in result.all()]
+
+    @classmethod
+    async def get_project_chat_history(
+            cls,
+            pid: int,
+            async_session: AsyncSession) -> list['Message']:
+        """Return all Messages to and from uid"""
+        async with async_session.begin():
+            result = await async_session.execute(
+                select(cls).
+                where(cls.to_pid == pid).
+                order_by(cls.date))
             return [item[0] for item in result.all()]
