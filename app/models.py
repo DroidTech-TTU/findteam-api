@@ -9,7 +9,7 @@ from random import randbytes
 from typing import Optional
 
 from bcrypt import checkpw, gensalt, hashpw
-from sqlalchemy import Column, ForeignKey, delete, union_all
+from sqlalchemy import Column, ForeignKey, delete
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
@@ -130,11 +130,16 @@ class User(Base):
                 return None
 
     @classmethod
-    async def from_b64_access_token(cls, b64_access_token: str, async_session: AsyncSession) -> Optional['User']:
+    async def from_b64_access_token(
+            cls,
+            b64_access_token: str,
+            async_session: AsyncSession) -> Optional['User']:
         """Return the User by OAuth2 access_token"""
         async with async_session.begin():
             try:
-                stmt = await async_session.execute(select(cls).where(cls.access_token == b64decode(b64_access_token)))
+                stmt = await async_session.execute(
+                    select(cls).
+                    where(cls.access_token == b64decode(b64_access_token)))
                 result = stmt.one()
                 return result[0]
             except NoResultFound:
@@ -168,7 +173,9 @@ class UserUrl(Base):
         """Return the UserUrls associated with a User ID"""
         async with async_session.begin():
             try:
-                stmt = await async_session.execute(select(join(User, UserUrl)).where(User.uid == uid and UserUrl.uid == uid))
+                stmt = await async_session.execute(
+                    select(join(User, UserUrl)).
+                    where(User.uid == uid and UserUrl.uid == uid))
                 return stmt.all()
             except NoResultFound:
                 return []
@@ -203,7 +210,10 @@ class Tag(Base):
         """Return the Tags associated with a User ID"""
         async with async_session.begin():
             try:
-                stmt = await async_session.execute(select(join(join(User, UserTagged), Tag)).where(User.uid == uid and UserTagged.uid == uid and Tag.text == UserTagged.tag_text))
+                stmt = await async_session.execute(
+                    select(join(join(User, UserTagged), Tag)).
+                    where(User.uid == uid and UserTagged.uid == uid
+                          and Tag.text == UserTagged.tag_text))
                 return stmt.all()
             except NoResultFound:
                 return []
@@ -414,7 +424,12 @@ class Message(Base):
             return set(item[0] for item in stmt.all())
 
     @classmethod
-    async def get_chat_history(cls, from_uid: int, async_session: AsyncSession, to_uid: int = None, to_pid: int = None):
+    async def get_chat_history(
+            cls,
+            from_uid: int,
+            async_session: AsyncSession,
+            to_uid: int = None,
+            to_pid: int = None):
         """Return all Messages of to and from uid"""
         async with async_session.begin():
             stmt = select(cls).where(cls.from_uid == from_uid)

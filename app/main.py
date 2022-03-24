@@ -236,7 +236,11 @@ async def get_chat_history(
     user = await models.User.from_b64_access_token(access_token, async_session)
     if not user:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
-    chat_history = await models.Message.get_chat_history(user.uid, async_session, to_uid=uid, to_pid=pid)
+    chat_history = await models.Message.get_chat_history(
+        user.uid,
+        async_session,
+        to_uid=uid,
+        to_pid=pid)
     results = []
     for message in chat_history:
         if message.to_uid == user.uid:
@@ -317,3 +321,22 @@ async def upload_user_picture(
     user.picture = local_file_path.name
     await async_session.commit()
     return Response(status_code=status.HTTP_200_OK)
+
+
+@app.get(
+    '/project',
+    response_class=schemas.ProjectResultModel,
+    responses={
+        status.HTTP_403_FORBIDDEN: {
+            'description': 'User authorization or permission error'}
+    },
+    tags=['projects'])
+async def view_project(
+        pid: int,
+        access_token: str = Depends(oauth2),
+        async_session: AsyncSession = Depends(get_db)):
+    user = await models.User.from_b64_access_token(access_token, async_session)
+    if not user:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
+    project = await models.Project.from_pid(pid, async_session)
+    return schemas.ProjectResultModel.from_orm(project)

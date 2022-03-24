@@ -7,7 +7,7 @@ from datetime import datetime
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from .models import MembershipType, Status, Tag, User, UserUrl
+from .models import MembershipType, Status, Tag, User, UserUrl, Project, ProjectMembership, ProjectPicture, ProjectTagged
 
 
 class RegisterRequestModel(BaseModel):
@@ -171,8 +171,33 @@ class ProjectMember(BaseModel):
         }
 
 
-class ProjectModel(BaseModel):
-    """Project schema"""
+class ProjectRequestModel(BaseModel):
+    """Project update schema"""
+    title: str
+    status: Status
+    description: str
+    members: list[ProjectMember]
+    tags: list[TagModel]
+
+    class Config:
+        schema_extra = {
+            'example': {
+                'title': 'A Very Cool Project',
+                'status': Status.AWAITING_TEAM,
+                'description': 'I am editing the description.',
+                'members': [ProjectMember(
+                    uid=22,
+                    pid=21,
+                    membership_type=MembershipType.ADMIN)],
+                'tags': [TagModel(
+                    text='Houston',
+                    category='Location')]
+            }
+        }
+
+
+class ProjectResultModel(BaseModel):
+    """Project retrieval schema"""
     pid: int
     title: str
     status: Status
@@ -182,8 +207,12 @@ class ProjectModel(BaseModel):
     owner_uid: int
     tags: list[TagModel]
 
+    @classmethod
+    async def from_orm(cls, project: Project, async_session: AsyncSession) -> 'ProjectResultModel':
+        """Fetch User data into schema"""
+        raise NotImplementedError  # TODO Finish
+
     class Config:
-        orm_mode = True
         schema_extra = {
             'example': {
                 'pid': 21,
