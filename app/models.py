@@ -80,7 +80,7 @@ class User(Base):
         default=lambda: randbytes(16))
     # urls = relationship('UserUrl')
     # tags = relationship('UserTagged')
-    # Above line is bugged due to asyncio
+    # "Relationship" is bugged due to asyncio
 
     def __str__(self):
         return f'#{self.uid} {self.first_name} {self.last_name}'
@@ -89,19 +89,6 @@ class User(Base):
     def b64_access_token(self) -> bytes:
         """Return self.access_token as base64 encoded string"""
         return b64encode(self.access_token)
-
-    async def get_owned_projects(self, async_session: AsyncSession) -> list['Project']:
-        """List Projects owned by this User"""
-        async with async_session.begin():
-            return (await async_session.execute(
-                select(Project).where(Project.owner_uid == self.uid))).values()
-
-    async def get_membership_projects(self, async_session: AsyncSession) -> list['Project']:
-        """List Projects this User is a member or applicant of (not owner)"""
-        async with async_session.begin():
-            memberships = (await async_session.execute(select(ProjectMembership).where(
-                ProjectMembership.uid == self.uid))).values()
-            return [membership.project for membership in memberships]
 
     def check_password(self, password: str) -> bool:
         """Return True if password matches self.password hash"""
@@ -174,8 +161,8 @@ class UserUrl(Base):
         async with async_session.begin():
             try:
                 stmt = await async_session.execute(
-                    select(join(User, UserUrl)).
-                    where(User.uid == uid and UserUrl.uid == uid))
+                    select(join(User, cls)).
+                    where(User.uid == uid and cls.uid == uid))
                 return stmt.all()
             except NoResultFound:
                 return []
@@ -184,7 +171,7 @@ class UserUrl(Base):
     async def set_user_urls(cls, uid: int, urls: list[dict], async_session: AsyncSession):
         """Update the UserUrls associated with a User ID"""
         async with async_session.begin():
-            await async_session.execute(delete(UserUrl).where(UserUrl.uid == uid))
+            await async_session.execute(delete(cls).where(cls.uid == uid))
         await async_session.commit()
         async_session.add_all(cls(
             uid=uid,
@@ -206,20 +193,26 @@ class Tag(Base):
         return f'{self.text} ({self.category})'
 
     @classmethod
-    async def get_user_tags(cls, uid: int, async_session: AsyncSession):
-        """Return the Tags associated with a User ID"""
+    async def get_tags(cls, async_session: AsyncSession, uid: int = None, pid: int = None):
+        """Return the Tags associated with a User or Project ID"""
+        assert (uid or pid) and not (uid and pid)  # uid XOR pid
         async with async_session.begin():
             try:
-                stmt = await async_session.execute(
-                    select(join(join(User, UserTagged), Tag)).
-                    where(User.uid == uid and UserTagged.uid == uid
-                          and Tag.text == UserTagged.tag_text))
-                return stmt.all()
+                stmt = select(join(join(User, UserTagged)
+                              if uid else join(Project, ProjectTagged), Tag))
+                if uid:
+                    stmt = stmt.where(
+                        User.uid == uid and UserTagged.uid == uid)
+                else:
+                    stmt = stmt.where(
+                        Project.pid == pid and ProjectTagged.pid == pid)
+                result = await async_session.execute(stmt.where(Tag.text == UserTagged.tag_text))
+                return result.all()
             except NoResultFound:
                 return []
 
     @staticmethod
-    async def set_user_tags(uid: int, tags: list[dict], async_session: AsyncSession):
+    async def set_tags(uid: int, tags: list[dict], async_session: AsyncSession):
         """Update the Tags associated with a User"""
         async with async_session.begin():
             await async_session.execute(delete(UserTagged).where(UserTagged.uid == uid))
@@ -291,8 +284,8 @@ class Project(Base):
         Enum(Status),
         nullable=False,
         default=0)
-    pictures = relationship('ProjectPicture')
-    tags = relationship('ProjectTagged')
+    #pictures = relationship('ProjectPicture')
+    #tags = relationship('ProjectTagged')
     members = relationship(
         'ProjectMembership',
         backref='project')
@@ -327,6 +320,28 @@ class ProjectPicture(Base):
         # 672ce0696eb32fa4665231f0867254ac672abadf354d9330a075c9432a30352a.png
         String(length=68),
         primary_key=True)
+
+    @classmethod
+    async def get_project_pictures(cls, pid: int, async_session: AsyncSession) -> list[str]:
+        async with async_session.begin():
+            try:
+                stmt = await async_session.execute(
+                    select(join(Project, cls)).
+                    where(Project.pid == pid and cls.pid == pid))
+                return [item.picture for item in stmt.all()]
+            except NoResultFound:
+                return []
+
+    @classmethod
+    async def set_project_pictures(cls, pid: int, pictures: list[str], async_session: AsyncSession):
+        """Update the UserUrls associated with a User ID"""
+        async with async_session.begin():
+            await async_session.execute(delete(cls).where(cls.pid == pid))
+        await async_session.commit()
+        async_session.add_all(cls(
+            pid=pid,
+            picture=picture) for picture in pictures)
+        await async_session.commit()
 
 
 class ProjectTagged(Base):
@@ -371,6 +386,17 @@ class ProjectMembership(Base):
     membership_type = Column(
         Enum(MembershipType),
         nullable=False)
+
+    @classmethod
+    async def get_project_memberships(cls, pid: int, async_session: AsyncSession) -> list['ProjectMembership']:
+        async with async_session.begin():
+            try:
+                stmt = await async_session.execute(
+                    select(join(User, cls)).
+                    where(cls.pid == pid and cls.uid == User.uid))
+                return stmt.all()
+            except NoResultFound:
+                return []
 
 
 class Message(Base):

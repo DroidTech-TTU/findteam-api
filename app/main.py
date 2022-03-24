@@ -163,7 +163,7 @@ async def update_user(
             except AttributeError:  # Ignore extras
                 pass
         await async_session.commit()
-        await models.Tag.set_user_tags(
+        await models.Tag.set_tags(
             uid,
             [dict(tag_dict) for tag_dict in new_info.tags],
             async_session)
@@ -325,7 +325,7 @@ async def upload_user_picture(
 
 @app.get(
     '/project',
-    response_class=schemas.ProjectResultModel,
+    response_model=schemas.ProjectResultModel,
     responses={
         status.HTTP_403_FORBIDDEN: {
             'description': 'User authorization or permission error'}
@@ -339,4 +339,4 @@ async def view_project(
     if not user:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
     project = await models.Project.from_pid(pid, async_session)
-    return schemas.ProjectResultModel.from_orm(project)
+    return await schemas.ProjectResultModel.from_orm(project, async_session)

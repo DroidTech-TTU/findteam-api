@@ -7,7 +7,8 @@ from datetime import datetime
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from .models import MembershipType, Status, Tag, User, UserUrl, Project, ProjectMembership, ProjectPicture, ProjectTagged
+from .models import (MembershipType, Project, ProjectMembership,
+                     ProjectPicture, Status, Tag, User, UserUrl)
 
 
 class RegisterRequestModel(BaseModel):
@@ -92,7 +93,9 @@ class UserResultModel(BaseModel):
             urls=[UrlModel.from_orm(url) for url in
                   await UserUrl.get_user_urls(user.uid, async_session)],
             tags=[TagModel.from_orm(tag) for tag in
-                  await Tag.get_user_tags(user.uid, async_session)],
+                  await Tag.get_tags(
+                      async_session,
+                      uid=user.uid)],
             **dict(user))
 
     class Config:
@@ -155,7 +158,7 @@ class UserRequestModel(BaseModel):
         }
 
 
-class ProjectMember(BaseModel):
+class ProjectMembershipModel(BaseModel):
     """User project membership schema"""
     uid: int
     pid: int
@@ -176,16 +179,17 @@ class ProjectRequestModel(BaseModel):
     title: str
     status: Status
     description: str
-    members: list[ProjectMember]
+    members: list[ProjectMembershipModel]
     tags: list[TagModel]
 
     class Config:
+        orm_mode = True
         schema_extra = {
             'example': {
                 'title': 'A Very Cool Project',
                 'status': Status.AWAITING_TEAM,
                 'description': 'I am editing the description.',
-                'members': [ProjectMember(
+                'members': [ProjectMembershipModel(
                     uid=22,
                     pid=21,
                     membership_type=MembershipType.ADMIN)],
@@ -203,14 +207,21 @@ class ProjectResultModel(BaseModel):
     status: Status
     description: str
     pictures: list[str]
-    members: list[ProjectMember]
+    members: list[ProjectMembershipModel]
     owner_uid: int
     tags: list[TagModel]
 
     @classmethod
     async def from_orm(cls, project: Project, async_session: AsyncSession) -> 'ProjectResultModel':
-        """Fetch User data into schema"""
-        raise NotImplementedError  # TODO Finish
+        """Fetch Project data into schema"""
+        return cls(
+            pictures=await ProjectPicture.get_project_pictures(project.pid, async_session),
+            members=await ProjectMembership.get_project_memberships(project.pid, async_session),
+            tags=[TagModel.from_orm(tag) for tag in
+                  await Tag.get_tags(
+                      async_session,
+                      pid=project.pid)],
+            **dict(project))
 
     class Config:
         schema_extra = {
@@ -222,7 +233,7 @@ class ProjectResultModel(BaseModel):
                 'pictures': [
                     '8f434346648f6b96df89dda901c5176b10a6d83961dd3c1ac88b59b2dc327aa4.png'
                 ],
-                'members': [ProjectMember(
+                'members': [ProjectMembershipModel(
                     uid=22,
                     pid=21,
                     membership_type=MembershipType.ADMIN)],
