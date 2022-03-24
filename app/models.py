@@ -448,7 +448,8 @@ class Message(Base):
             for message in stmt.all():
                 result.add(message[0].to_uid)
                 result.add(message[0].from_uid)
-            result.remove(uid)
+            result.discard(uid)
+            result.discard(None)
             return result
 
     @classmethod
