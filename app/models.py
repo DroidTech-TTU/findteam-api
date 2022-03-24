@@ -437,7 +437,7 @@ class Message(Base):
                           and_(cls.to_uid == from_uid, cls.from_uid == to_uid))))
 
     @classmethod
-    async def get_chat_list(cls, uid: int, async_session: AsyncSession) -> list[int]:
+    async def get_chat_list(cls, uid: int, async_session: AsyncSession) -> set[int]:
         """Return uids of active dms sent between uid by any user"""
         async with async_session.begin():
             stmt = await async_session.execute(
