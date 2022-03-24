@@ -6,21 +6,30 @@ from email.message import EmailMessage
 from smtplib import SMTP_SSL
 from urllib.parse import urlencode
 
+from jinja2 import Environment, FileSystemLoader
+
 from .config import get_settings
 from .models import User
 
 _settings = get_settings()
 address = _settings.email_address
 password = _settings.email_password
+jinja2 = Environment(loader=FileSystemLoader('app/templates'))
+
+
+def render_password_reset(reset_uri: str) -> str:
+    """Jinja2 render email_forgot_link.html as str"""
+    template = jinja2.get_template('email_forgot_link.html')
+    return template.render(reset_uri=reset_uri)
 
 
 def send_password_reset(user: User) -> None:
     """Send password reset email to User via FindTeam gmail SMTP"""
-    msg = EmailMessage()
-    # TODO: Fill in Android password reset URI
     reset_uri = f'findteam://forgot?{urlencode({"access_token": user.b64_access_token.decode()})}'
-    msg.set_content(
-        f'Hello - the link to reset your password is here: {reset_uri}')
+    msg = EmailMessage()
+    msg.set_type('text/html')
+    msg.set_content(reset_uri)
+    msg.add_alternative(render_password_reset(reset_uri), subtype='html')
     msg['Subject'] = 'FindTeam Password Reset'
     msg['From'] = address
     msg['To'] = user.email
