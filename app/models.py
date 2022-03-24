@@ -406,9 +406,23 @@ class Message(Base):
         return f'#{self.id}: {self.text}'
 
     @classmethod
-    async def get_recent_dms(cls, uid: int, async_session: AsyncSession):
+    async def get_chat_list(cls, uid: int, async_session: AsyncSession):
         """Return uids of active dms sent between uid by any user"""
         async with async_session.begin():
             stmt = await async_session.execute(
                 select(cls.to_uid).where(cls.from_uid == uid).order_by(cls.date))
             return set(item[0] for item in stmt.all())
+
+    @classmethod
+    async def get_chat_history(cls, from_uid: int, async_session: AsyncSession, to_uid: int = None, to_pid: int = None):
+        """Return all Messages of to and from uid"""
+        async with async_session.begin():
+            stmt = select(cls).where(cls.from_uid == from_uid)
+            if to_uid:
+                stmt = stmt.where(cls.to_uid == to_uid)
+            elif to_pid:
+                stmt = stmt.where(cls.to_pid == to_pid)
+            else:
+                raise Exception('to_uid XOR to_pid must be specified')
+            result = await async_session.execute(stmt.order_by(cls.date))
+            return [item[0] for item in result.all()]

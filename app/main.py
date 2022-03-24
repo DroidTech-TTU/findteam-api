@@ -213,14 +213,16 @@ async def get_chat_list(
     user = await models.User.from_b64_access_token(access_token, async_session)
     if not user:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
-    return await models.Message.get_recent_dms(user.uids, async_session)
+    return await models.Message.get_chat_list(user.uid, async_session)
 
 
 @app.get(
     '/chat',
     response_model=list[schemas.MessageResultModel],
     responses={
-        status.HTTP_403_FORBIDDEN: {'description': 'User authorization error'}
+        status.HTTP_403_FORBIDDEN: {'description': 'User authorization error'},
+        status.HTTP_406_NOT_ACCEPTABLE: {
+            'description': 'uid XOR pid must be specified'}
     },
     tags=['chats'])
 async def get_chat_history(
@@ -228,11 +230,19 @@ async def get_chat_history(
         pid: int = None,
         access_token: str = Depends(oauth2),
         async_session: AsyncSession = Depends(get_db)):
-    """List MessageResultModels of logged in user in dm with uid or pid"""
+    """List MessageResultModels of logged in user in chat with uid or pid"""
+    if not uid and not pid:
+        raise HTTPException(status_code=status.HTTP_406_NOT_ACCEPTABLE)
     user = await models.User.from_b64_access_token(access_token, async_session)
     if not user:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
-    raise NotImplementedError
+    chat_history = await models.Message.get_chat_history(user.uid, async_session, to_uid=uid, to_pid=pid)
+    results = []
+    for message in chat_history:
+        if message.to_uid == user.uid:
+            message.is_read = True
+        results.append(schemas.MessageResultModel.from_orm(message))
+    return results
 
 
 @app.post(
