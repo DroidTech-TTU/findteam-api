@@ -14,7 +14,7 @@ from .models import User
 _settings = get_settings()
 address = _settings.email_address
 password = _settings.email_password
-jinja2 = Environment(loader=FileSystemLoader('templates', 'app/templates'))
+jinja2 = Environment(loader=FileSystemLoader('templates', 'app/templates', 'findteam-api/app/templates'))
 
 
 def render_password_reset(reset_uri: str) -> str:
