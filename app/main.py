@@ -5,6 +5,7 @@ FindTeam FastAPI app
 from datetime import datetime
 from hashlib import sha256
 from logging import Formatter, StreamHandler
+from pathlib import Path
 
 from fastapi import (Depends, FastAPI, HTTPException, Request, UploadFile,
                      status)
@@ -44,6 +45,7 @@ async def startup():
     logger.setLevel(settings.logging_level)
     logger.addHandler(_sh)
     logger.debug(str(settings))
+    logger.debug(f'CWD: {Path.cwd()}')
     if settings.create_tables:
         logger.debug('Initializing models...')
         await init_models()

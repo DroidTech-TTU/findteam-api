@@ -14,7 +14,8 @@ from .models import User
 _settings = get_settings()
 address = _settings.email_address
 password = _settings.email_password
-jinja2 = Environment(loader=FileSystemLoader('templates', 'app/templates', 'findteam-api/app/templates'))
+jinja2 = Environment(loader=FileSystemLoader(
+    'app/templates', 'findteam-api/app/templates'))
 
 
 def render_password_reset(reset_uri: str) -> str:
@@ -25,7 +26,7 @@ def render_password_reset(reset_uri: str) -> str:
 
 def send_password_reset(user: User) -> None:
     """Send password reset email to User via FindTeam gmail SMTP"""
-    reset_uri = f'findteam://forgot?{urlencode({"access_token": user.b64_access_token.decode()})}'
+    reset_uri = f'https://findteam.2labz.com/forgot?{urlencode({"access_token": user.b64_access_token.decode()})}'
     msg = EmailMessage()
     msg.set_type('text/html')
     msg.set_content(reset_uri)
