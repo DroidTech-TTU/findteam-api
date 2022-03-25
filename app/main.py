@@ -11,7 +11,7 @@ from fastapi import (Depends, FastAPI, HTTPException, Request, UploadFile,
 from fastapi.responses import FileResponse, RedirectResponse, Response
 from fastapi.security import (OAuth2PasswordBearer,
                               OAuth2PasswordRequestFormStrict)
-from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from . import __version__, logger, mail, models, schemas
@@ -164,9 +164,9 @@ async def update_user(
                 pass
         await async_session.commit()
         await models.Tag.set_tags(
-            uid,
             [dict(tag_dict) for tag_dict in new_info.tags],
-            async_session)
+            async_session,
+            uid=uid)
         await models.UserUrl.set_user_urls(
             uid,
             [dict(url_model) for url_model in new_info.urls],
@@ -355,8 +355,8 @@ async def upload_user_picture(
     '/project',
     response_model=schemas.ProjectResultModel,
     responses={
-        status.HTTP_403_FORBIDDEN: {
-            'description': 'User authorization or permission error'}
+        status.HTTP_403_FORBIDDEN: {'description': 'User authorization or permission error'},
+        status.HTTP_404_NOT_FOUND: {'description': 'Project not found'}
     },
     tags=['projects'])
 async def view_project(
@@ -367,4 +367,68 @@ async def view_project(
     if not user:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
     project = await models.Project.from_pid(pid, async_session)
+    if not project:
+        return Response(status_code=status.HTTP_404_NOT_FOUND)
     return await schemas.ProjectResultModel.from_orm(project, async_session)
+
+
+@app.post(
+    '/create',
+    responses={
+        status.HTTP_403_FORBIDDEN: {'description': 'User authorization error'},
+        status.HTTP_400_BAD_REQUEST: {'description': 'Invalid data given'}
+    },
+    tags=['projects'])
+async def create_new_project(
+        project: schemas.ProjectRequestModel,
+        access_token: str = Depends(oauth2),
+        async_session: AsyncSession = Depends(get_db)):
+    user = await models.User.from_b64_access_token(access_token, async_session)
+    if not user:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
+    new_project = models.Project(
+        owner_uid=user.uid,
+        title=project.title,
+        description=project.description,
+        status=project.status)
+    async_session.add(new_project)
+    await async_session.commit()
+    async_session.add_all(
+        models.ProjectMembership(
+            uid=membership.uid,
+            pid=new_project.pid,
+            membership_type=membership.membership_type
+        ) for membership in project.members)
+    try:
+        await async_session.commit()
+    except IntegrityError:
+        await async_session.rollback()
+        await async_session.delete(new_project)
+        await async_session.commit()
+        return Response(status_code=status.HTTP_400_BAD_REQUEST)
+    await models.Tag.set_tags(
+        [tag.dict() for tag in project.tags],
+        async_session,
+        pid=new_project.pid)
+    await async_session.commit()
+    return Response(status_code=status.HTTP_200_OK)
+
+
+@app.post(
+    '/project',
+    response_model=schemas.ProjectRequestModel,
+    responses={
+        status.HTTP_403_FORBIDDEN: {'description': 'User authorization error'},
+        status.HTTP_400_BAD_REQUEST: {'description': 'Invalid data given'}
+    },
+    tags=['projects'])
+async def update_existing_project(
+        pid: int,
+        project: schemas.ProjectRequestModel,
+        access_token: str = Depends(oauth2),
+        async_session: AsyncSession = Depends(get_db)):
+    user = await models.User.from_b64_access_token(access_token, async_session)
+    if not user:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
+    project = await models.Project.from_pid(pid)
+    raise NotImplementedError  # TODO

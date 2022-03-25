@@ -45,8 +45,8 @@ class OAuth2AccessTokenModel(BaseModel):
         }
 
 
-class TagModel(BaseModel):
-    """User or Project Tag schema"""
+class UserTagModel(BaseModel):
+    """User Tag schema"""
     text: str
     category: str
 
@@ -56,6 +56,21 @@ class TagModel(BaseModel):
             'example': {
                 'text': 'Houston',
                 'category': 'City'
+            }
+        }
+
+
+class ProjectTagModel(UserTagModel):
+    """Project Tag schema"""
+    is_user_requirement: bool
+
+    class Config:
+        orm_mode = True
+        schema_extra = {
+            'example': {
+                'text': 'Houston',
+                'category': 'City',
+                'is_user_requirement': False
             }
         }
 
@@ -84,7 +99,7 @@ class UserResultModel(BaseModel):
     picture: str | None
     email: str
     urls: list[UrlModel]
-    tags: list[TagModel]
+    tags: list[UserTagModel]
 
     @classmethod
     async def from_orm(cls, user: User, async_session: AsyncSession) -> 'UserResultModel':
@@ -92,7 +107,7 @@ class UserResultModel(BaseModel):
         return cls(
             urls=[UrlModel.from_orm(url) for url in
                   await UserUrl.get_user_urls(user.uid, async_session)],
-            tags=[TagModel.from_orm(tag) for tag in
+            tags=[UserTagModel.from_orm(tag) for tag in
                   await Tag.get_tags(
                       async_session,
                       uid=user.uid)],
@@ -132,7 +147,7 @@ class UserRequestModel(BaseModel):
     email: str
     password: str | None
     urls: list[UrlModel]
-    tags: list[TagModel]
+    tags: list[UserTagModel]
 
     class Config:
         schema_extra = {
@@ -161,7 +176,7 @@ class UserRequestModel(BaseModel):
 class ProjectMembershipModel(BaseModel):
     """User project membership schema"""
     uid: int
-    pid: int
+    pid: int | None
     membership_type: MembershipType
 
     class Config:
@@ -180,7 +195,7 @@ class ProjectRequestModel(BaseModel):
     status: Status
     description: str
     members: list[ProjectMembershipModel]
-    tags: list[TagModel]
+    tags: list[ProjectTagModel]
 
     class Config:
         orm_mode = True
@@ -193,9 +208,10 @@ class ProjectRequestModel(BaseModel):
                     uid=22,
                     pid=21,
                     membership_type=MembershipType.ADMIN)],
-                'tags': [TagModel(
+                'tags': [ProjectTagModel(
                     text='Houston',
-                    category='Location')]
+                    category='Location',
+                    is_user_requirement=False)]
             }
         }
 
@@ -209,7 +225,7 @@ class ProjectResultModel(BaseModel):
     pictures: list[str]
     members: list[ProjectMembershipModel]
     owner_uid: int
-    tags: list[TagModel]
+    tags: list[ProjectTagModel]
 
     @classmethod
     async def from_orm(cls, project: Project, async_session: AsyncSession) -> 'ProjectResultModel':
@@ -217,7 +233,7 @@ class ProjectResultModel(BaseModel):
         return cls(
             pictures=await ProjectPicture.get_project_pictures(project.pid, async_session),
             members=await ProjectMembership.get_project_memberships(project.pid, async_session),
-            tags=[TagModel.from_orm(tag) for tag in
+            tags=[ProjectTagModel.from_orm(tag) for tag in
                   await Tag.get_tags(
                       async_session,
                       pid=project.pid)],
@@ -238,9 +254,10 @@ class ProjectResultModel(BaseModel):
                     pid=21,
                     membership_type=MembershipType.ADMIN)],
                 'owner_uid': 21,
-                'tags': [TagModel(
+                'tags': [ProjectTagModel(
                     text='Lubbock',
-                    category='Location')]
+                    category='Location',
+                    is_user_requirement=False)]
             }
         }
 

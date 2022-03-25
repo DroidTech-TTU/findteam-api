@@ -9,11 +9,11 @@ from random import randbytes
 from typing import Optional
 
 from bcrypt import checkpw, gensalt, hashpw
-from sqlalchemy import Column, ForeignKey, delete, or_, and_
+from sqlalchemy import Column, ForeignKey, and_, delete, or_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from sqlalchemy.orm import join, relationship
+from sqlalchemy.orm import join
 from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy.types import (Boolean, DateTime, Enum, Integer, LargeBinary,
                               String)
@@ -192,7 +192,7 @@ class Tag(Base):
     @classmethod
     async def get_tags(cls, async_session: AsyncSession, uid: int = None, pid: int = None):
         """Return the Tags associated with a User or Project ID"""
-        assert (uid or pid) and not (uid and pid)  # uid XOR pid
+        assert bool(uid) ^ bool(pid)
         async with async_session.begin():
             stmt = select(join(join(User, UserTagged)
                                if uid else join(Project, ProjectTagged), Tag))
@@ -203,22 +203,40 @@ class Tag(Base):
             result = await async_session.execute(stmt.where(Tag.text == UserTagged.tag_text))
             return result.all()
 
-    @staticmethod
-    async def set_tags(uid: int, tags: list[dict], async_session: AsyncSession):
-        """Update the Tags associated with a User"""
+    @classmethod
+    async def set_tags(
+            cls,
+            tags: list[dict],
+            async_session: AsyncSession,
+            uid: int = None,
+            pid: int = None):
+        """Update the Tags associated with a User or Project ID"""
+        assert bool(uid) ^ bool(pid)
         async with async_session.begin():
-            await async_session.execute(delete(UserTagged).where(UserTagged.uid == uid))
+            if uid:
+                stmt = delete(UserTagged).where(UserTagged.uid == uid)
+            else:
+                stmt = delete(ProjectTagged).where(ProjectTagged.pid == pid)
+            await async_session.execute(stmt)
         await async_session.commit()
         for tag_dict in tags:
-            tag = Tag(**tag_dict)
+            tag = cls(
+                text=tag_dict['text'],
+                category=tag_dict['category'])
             async_session.add(tag)
             try:
                 await async_session.commit()
             except IntegrityError:  # Ignore duplicate Tags
                 await async_session.rollback()
-            async_session.add(UserTagged(
-                uid=uid,
-                tag_text=tag.text))
+            if uid:
+                async_session.add(UserTagged(
+                    uid=uid,
+                    tag_text=tag.text))
+            else:
+                async_session.add(ProjectTagged(
+                    pid=pid,
+                    tag_text=tag.text,
+                    is_user_requirement=tag_dict['is_user_requirement']))
             await async_session.commit()
 
 
@@ -278,9 +296,9 @@ class Project(Base):
         default=0)
     #pictures = relationship('ProjectPicture')
     #tags = relationship('ProjectTagged')
-    members = relationship(
-        'ProjectMembership',
-        backref='project')
+    # members = relationship(
+    #    'ProjectMembership',
+    #    backref='project')
 
     def __str__(self):
         """pid title"""
@@ -383,6 +401,20 @@ class ProjectMembership(Base):
                 select(join(User, cls)).
                 where(cls.pid == pid, cls.uid == User.uid))
             return stmt.all()
+
+    @classmethod
+    async def set_project_memberships(
+            cls,
+            pid: int,
+            memberships: list['ProjectMembership'],
+            async_session: AsyncSession):
+        """Update the UserUrls associated with a User ID"""
+        async with async_session.begin():
+            await async_session.execute(delete(cls).where(cls.pid == pid))
+        await async_session.commit()
+        assert all(membership.pid == pid for membership in memberships)
+        async_session.add_all(memberships)
+        await async_session.commit()
 
 
 class Message(Base):
