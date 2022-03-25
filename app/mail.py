@@ -14,7 +14,7 @@ from .models import User
 _settings = get_settings()
 address = _settings.email_address
 password = _settings.email_password
-jinja2 = Environment(loader=FileSystemLoader('app/templates'))
+jinja2 = Environment(loader=FileSystemLoader(_settings.template_path))
 forgot_template = jinja2.get_template('email_forgot_link.html')
 
 

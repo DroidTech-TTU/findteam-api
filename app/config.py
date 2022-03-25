@@ -18,6 +18,7 @@ class Settings(BaseSettings):
         env='DB_URL')
     create_tables: bool = Field(True, env='CREATE_TABLES')
     picture_storage: Path = Field('/pictures', env='PICTURE_STORAGE')
+    template_path: Path = Field('/templates', env='TEMPLATE_PATH')
     logging_format: str = Field(
         f'%(asctime)s %(levelname)s {app_name} %(funcName)s %(message)s',
         env='LOGGING_FORMAT')
