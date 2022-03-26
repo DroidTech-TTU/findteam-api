@@ -15,6 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.orm import join
 from sqlalchemy.orm.exc import NoResultFound
+from sqlalchemy.sql.expression import func
 from sqlalchemy.types import (Boolean, DateTime, Enum, Integer, LargeBinary,
                               String)
 
@@ -142,6 +143,14 @@ class User(Base):
                     cls.first_name.like(query),
                     cls.middle_name.like(query),
                     cls.last_name.like(query))))
+            return [item[0] for item in stmt.all()]
+
+    @classmethod
+    async def random(cls, async_session: AsyncSession, limit=10) -> 'User':
+        """Get random list of Users"""
+        async with async_session.begin():
+            stmt = await async_session.execute(
+                select(cls).order_by(func.rand()).limit(limit))  # MYSQL ONLY!!!
             return [item[0] for item in stmt.all()]
 
     @staticmethod
@@ -335,6 +344,14 @@ class Project(Base):
                 select(cls).where(or_(
                     cls.title.like(query),
                     cls.description.like(query))))
+            return [item[0] for item in stmt.all()]
+
+    @classmethod
+    async def random(cls, async_session: AsyncSession, limit=10) -> 'Project':
+        """Get random list of Projects"""
+        async with async_session.begin():
+            stmt = await async_session.execute(
+                select(cls).order_by(func.rand()).limit())  # MYSQL ONLY!!!
             return [item[0] for item in stmt.all()]
 
 

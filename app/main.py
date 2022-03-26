@@ -540,14 +540,17 @@ async def delete_project_picture(
     response_model=list[schemas.UserResultModel],
     tags=['users', 'search'])
 async def search_users(
-        query: str,
+        query: str = None,
         access_token: str = Depends(oauth2),
         async_session: AsyncSession = Depends(get_db)):
     """Search for Users by an arbitrary query - otherwise chosen by algorithm"""
     user = await models.User.from_b64_access_token(access_token, async_session)
     if not user:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
-    results = await models.User.search(query, async_session)
+    if query:
+        results = await models.User.search(query, async_session)
+    else:
+        results = await models.User.random(async_session)
     return [await schemas.UserResultModel.from_orm(u, async_session) for u in results]
 
 
@@ -556,12 +559,15 @@ async def search_users(
     response_model=list[schemas.ProjectResultModel],
     tags=['projects', 'search'])
 async def search_projects(
-        query: str,
+        query: str = None,
         access_token: str = Depends(oauth2),
         async_session: AsyncSession = Depends(get_db)):
-    """Search for Users by an arbitrary query - otherwise chosen by algorithm"""
+    """Search for Projects by an arbitrary query - otherwise chosen by algorithm"""
     user = await models.User.from_b64_access_token(access_token, async_session)
     if not user:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
-    results = await models.Project.search(query, async_session)
+    if query:
+        results = await models.Project.search(query, async_session)
+    else:
+        results = await models.Project.random(async_session)
     return [await schemas.ProjectResultModel.from_orm(p, async_session) for p in results]
