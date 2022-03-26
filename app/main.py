@@ -531,4 +531,37 @@ async def delete_project_picture(
         if not membership or membership.membership_type != schemas.MembershipType.ADMIN:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
     await models.ProjectPicture.delete_project_picture(pid, picture_file, async_session)
+    await async_session.commit()
     return Response(status_code=status.HTTP_200_OK)
+
+
+@app.get(
+    '/user/search',
+    response_model=list[schemas.UserResultModel],
+    tags=['users', 'search'])
+async def search_users(
+        query: str,
+        access_token: str = Depends(oauth2),
+        async_session: AsyncSession = Depends(get_db)):
+    """Search for Users by an arbitrary query - otherwise chosen by algorithm"""
+    user = await models.User.from_b64_access_token(access_token, async_session)
+    if not user:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
+    results = await models.User.search(query, async_session)
+    return [await schemas.UserResultModel.from_orm(u, async_session) for u in results]
+
+
+@app.get(
+    '/project/search',
+    response_model=list[schemas.ProjectResultModel],
+    tags=['projects', 'search'])
+async def search_projects(
+        query: str,
+        access_token: str = Depends(oauth2),
+        async_session: AsyncSession = Depends(get_db)):
+    """Search for Users by an arbitrary query - otherwise chosen by algorithm"""
+    user = await models.User.from_b64_access_token(access_token, async_session)
+    if not user:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
+    results = await models.Project.search(query, async_session)
+    return [await schemas.ProjectResultModel.from_orm(p, async_session) for p in results]

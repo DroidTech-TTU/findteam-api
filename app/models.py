@@ -132,6 +132,18 @@ class User(Base):
             except NoResultFound:
                 return None
 
+    @classmethod
+    async def search(cls, query: str, async_session: AsyncSession) -> list['User']:
+        """Search for list of Users matching query"""
+        async with async_session.begin():
+            stmt = await async_session.execute(
+                select(cls).where(or_(
+                    cls.email.like(query),
+                    cls.first_name.like(query),
+                    cls.middle_name.like(query),
+                    cls.last_name.like(query))))
+            return [item[0] for item in stmt.all()]
+
     @staticmethod
     def hash_password(password: str) -> bytes:
         """Return bcrypt hashed password"""
@@ -294,8 +306,8 @@ class Project(Base):
         Enum(Status),
         nullable=False,
         default=0)
-    #pictures = relationship('ProjectPicture')
-    #tags = relationship('ProjectTagged')
+    # pictures = relationship('ProjectPicture')
+    # tags = relationship('ProjectTagged')
     # members = relationship(
     #    'ProjectMembership',
     #    backref='project')
@@ -314,6 +326,16 @@ class Project(Base):
                 return result[0]
             except NoResultFound:
                 return None
+
+    @classmethod
+    async def search(cls, query: str, async_session: AsyncSession) -> list['Project']:
+        """Search for list of Projects matching query"""
+        async with async_session.begin():
+            stmt = await async_session.execute(
+                select(cls).where(or_(
+                    cls.title.like(query),
+                    cls.description.like(query))))
+            return [item[0] for item in stmt.all()]
 
 
 class ProjectPicture(Base):
