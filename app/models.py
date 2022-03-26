@@ -351,7 +351,7 @@ class Project(Base):
         """Get random list of Projects"""
         async with async_session.begin():
             stmt = await async_session.execute(
-                select(cls).order_by(func.rand()).limit())  # MYSQL ONLY!!!
+                select(cls).order_by(func.rand()).limit(limit))  # MYSQL ONLY!!!
             return [item[0] for item in stmt.all()]
 
 
