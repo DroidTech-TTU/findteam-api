@@ -342,8 +342,8 @@ class Project(Base):
         async with async_session.begin():
             stmt = await async_session.execute(
                 select(cls).where(or_(
-                    cls.title.like(query),
-                    cls.description.like(query))))
+                    cls.title.like(f'%{query}%'),
+                    cls.description.like(f'${query}$'))))
             return [item[0] for item in stmt.all()]
 
     @classmethod
