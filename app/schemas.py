@@ -173,11 +173,23 @@ class UserRequestModel(BaseModel):
         }
 
 
-class ProjectMembershipModel(BaseModel):
-    """User project membership schema"""
+class ProjectMembershipRequestModel(BaseModel):
+    """User project membership result schema"""
     uid: int
-    pid: int | None
     membership_type: MembershipType
+
+    class Config:
+        schema_extra = {
+            'example': {
+                'uid': 22,
+                'membership_type': MembershipType.ADMIN
+            }
+        }
+
+
+class ProjectMembershipResultModel(ProjectMembershipRequestModel):
+    """User project membership schema"""
+    pid: int | None
 
     class Config:
         schema_extra = {
@@ -194,7 +206,7 @@ class ProjectRequestModel(BaseModel):
     title: str
     status: Status
     description: str
-    members: list[ProjectMembershipModel]
+    members: list[ProjectMembershipRequestModel]
     tags: list[ProjectTagModel]
 
     class Config:
@@ -204,7 +216,7 @@ class ProjectRequestModel(BaseModel):
                 'title': 'A Very Cool Project',
                 'status': Status.AWAITING_TEAM,
                 'description': 'I am editing the description.',
-                'members': [ProjectMembershipModel(
+                'members': [ProjectMembershipRequestModel(
                     uid=22,
                     pid=21,
                     membership_type=MembershipType.ADMIN)],
@@ -223,7 +235,7 @@ class ProjectResultModel(BaseModel):
     status: Status
     description: str
     pictures: list[str]
-    members: list[ProjectMembershipModel]
+    members: list[ProjectMembershipResultModel]
     owner_uid: int
     tags: list[ProjectTagModel]
 
@@ -249,7 +261,7 @@ class ProjectResultModel(BaseModel):
                 'pictures': [
                     '8f434346648f6b96df89dda901c5176b10a6d83961dd3c1ac88b59b2dc327aa4.png'
                 ],
-                'members': [ProjectMembershipModel(
+                'members': [ProjectMembershipResultModel(
                     uid=22,
                     pid=21,
                     membership_type=MembershipType.ADMIN)],

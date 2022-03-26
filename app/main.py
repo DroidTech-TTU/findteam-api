@@ -376,6 +376,7 @@ async def view_project(
 
 @app.post(
     '/create',
+    response_model=int,
     responses={
         status.HTTP_403_FORBIDDEN: {'description': 'User authorization error'},
         status.HTTP_400_BAD_REQUEST: {'description': 'Invalid data given'}
@@ -385,6 +386,7 @@ async def create_new_project(
         project: schemas.ProjectRequestModel,
         access_token: str = Depends(oauth2),
         async_session: AsyncSession = Depends(get_db)):
+    """Create project with new info, returning Project ID (pid)"""
     user = await models.User.from_b64_access_token(access_token, async_session)
     if not user:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
@@ -394,11 +396,15 @@ async def create_new_project(
         description=project.description,
         status=project.status)
     async_session.add(new_project)
-    await async_session.commit()
+    try:
+        await async_session.commit()
+    except IntegrityError:
+        return Response(status_code=status.HTTP_400_BAD_REQUEST)
+    new_pid = new_project.pid
     async_session.add_all(
         models.ProjectMembership(
             uid=membership.uid,
-            pid=new_project.pid,
+            pid=new_pid,
             membership_type=membership.membership_type
         ) for membership in project.members)
     try:
@@ -413,7 +419,7 @@ async def create_new_project(
         async_session,
         pid=new_project.pid)
     await async_session.commit()
-    return Response(status_code=status.HTTP_200_OK)
+    return new_pid
 
 
 @app.post(
@@ -430,6 +436,7 @@ async def update_existing_project(
         new_info: schemas.ProjectRequestModel,
         access_token: str = Depends(oauth2),
         async_session: AsyncSession = Depends(get_db)):
+    """Update attributes of Project with new_info"""
     user = await models.User.from_b64_access_token(access_token, async_session)
     if not user:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
