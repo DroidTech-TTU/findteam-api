@@ -434,3 +434,46 @@ async def update_existing_project(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
     project = await models.Project.from_pid(pid)
     raise NotImplementedError  # TODO
+
+
+@app.post(
+    '/project/picture',
+    responses={
+        status.HTTP_403_FORBIDDEN: {'description': 'User authorization or permission error'},
+        status.HTTP_422_UNPROCESSABLE_ENTITY: {
+            'description': 'Invalid content type uploaded - must be image/png'}
+    },
+    tags=['pictures', 'projects'])
+async def upload_project_picture(
+        pid: int,
+        picture: UploadFile,
+        request: Request,
+        settings: Settings = Depends(get_settings),
+        access_token: str = Depends(oauth2),
+        async_session: AsyncSession = Depends(get_db)):
+    """Upload project picture to pid via currently logged in user"""
+    user = await models.User.from_b64_access_token(access_token, async_session)
+    if not user:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
+    if picture.content_type != 'image/png':
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY)
+    project = await models.Project.from_pid(pid, async_session)
+    if not project:
+        raise HTTPException(status_code=404)
+    if project.owner_uid != user.uid:
+        membership = await models.ProjectMembership.from_uid_pid(user.uid, pid, async_session)
+        if not membership or membership.membership_type != schemas.MembershipType.ADMIN:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
+    picture_data = picture.file.read()
+    local_file_path = (settings.picture_storage /
+                       sha256(picture_data).hexdigest()).with_suffix('.png')
+    if not local_file_path.exists():
+        with local_file_path.open('wb') as local_file:
+            local_file.write(picture_data)
+    logger.debug('%s uploaded %s (%s)', user,
+                 local_file_path, request.client.host)
+    async_session.add(models.ProjectPicture(
+        pid=pid,
+        picture=local_file_path.name))
+    await async_session.commit()
+    return Response(status_code=status.HTTP_200_OK)

@@ -396,6 +396,7 @@ class ProjectMembership(Base):
 
     @classmethod
     async def get_project_memberships(cls, pid: int, async_session: AsyncSession) -> list['ProjectMembership']:
+        """Return all ProjectMemberships of pid"""
         async with async_session.begin():
             stmt = await async_session.execute(
                 select(join(User, cls)).
@@ -415,6 +416,16 @@ class ProjectMembership(Base):
         assert all(membership.pid == pid for membership in memberships)
         async_session.add_all(memberships)
         await async_session.commit()
+
+    @classmethod
+    async def from_uid_pid(cls, uid: int, pid: int, async_session: AsyncSession):
+        """Return ProjectMembership of uid in pid or None"""
+        async with async_session.begin():
+            stmt = await async_session.execute(
+                select(join(User, cls)).
+                where(cls.pid == pid, cls.uid == User.uid))
+            result = stmt.one_or_none()
+            return result[0]
 
 
 class Message(Base):
