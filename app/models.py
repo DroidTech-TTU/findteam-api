@@ -333,6 +333,7 @@ class ProjectPicture(Base):
 
     @classmethod
     async def get_project_pictures(cls, pid: int, async_session: AsyncSession) -> list[str]:
+        """Return list of Project picture strings"""
         async with async_session.begin():
             stmt = await async_session.execute(
                 select(join(Project, cls)).
@@ -341,7 +342,7 @@ class ProjectPicture(Base):
 
     @classmethod
     async def set_project_pictures(cls, pid: int, pictures: list[str], async_session: AsyncSession):
-        """Update the UserUrls associated with a User ID"""
+        """Update the ProjectPicture associated with a Project ID"""
         async with async_session.begin():
             await async_session.execute(delete(cls).where(cls.pid == pid))
         await async_session.commit()
@@ -349,6 +350,12 @@ class ProjectPicture(Base):
             pid=pid,
             picture=picture) for picture in pictures)
         await async_session.commit()
+
+    @classmethod
+    async def delete_project_picture(cls, pid: int, picture: str, async_session: AsyncSession):
+        """Delete the ProjectPicture on a pid"""
+        async with async_session.begin():
+            await async_session.execute(delete(cls).where(cls.pid == pid, cls.picture == picture))
 
 
 class ProjectTagged(Base):

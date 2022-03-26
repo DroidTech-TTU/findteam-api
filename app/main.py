@@ -421,19 +421,41 @@ async def create_new_project(
     response_model=schemas.ProjectRequestModel,
     responses={
         status.HTTP_403_FORBIDDEN: {'description': 'User authorization error'},
-        status.HTTP_400_BAD_REQUEST: {'description': 'Invalid data given'}
+        status.HTTP_400_BAD_REQUEST: {'description': 'Invalid data given'},
+        status.HTTP_404_NOT_FOUND: {'description': 'Project not found'}
     },
     tags=['projects'])
 async def update_existing_project(
         pid: int,
-        project: schemas.ProjectRequestModel,
+        new_info: schemas.ProjectRequestModel,
         access_token: str = Depends(oauth2),
         async_session: AsyncSession = Depends(get_db)):
     user = await models.User.from_b64_access_token(access_token, async_session)
     if not user:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
-    project = await models.Project.from_pid(pid)
-    raise NotImplementedError  # TODO
+    project = await models.Project.from_pid(pid, async_session)
+    if not project:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+    project_dict = dict(project)
+    for key in project_dict:  # Remaining ProjectRequestModel attributes
+        try:
+            setattr(project, key, getattr(new_info, key))
+        except AttributeError:  # Ignore extras
+            pass
+    await async_session.commit()
+    await models.ProjectMembership.set_project_memberships(
+        pid,
+        [models.ProjectMembership(
+            uid=membership.uid,
+            pid=pid,
+            membership_type=membership.membership_type) for membership in new_info.members], async_session)
+    await async_session.commit()
+    await models.Tag.set_tags(
+        [tag.dict() for tag in new_info.tags],
+        async_session,
+        pid=pid)
+    await async_session.commit()
+    return Response(status_code=status.HTTP_200_OK)
 
 
 @app.post(
@@ -441,7 +463,8 @@ async def update_existing_project(
     responses={
         status.HTTP_403_FORBIDDEN: {'description': 'User authorization or permission error'},
         status.HTTP_422_UNPROCESSABLE_ENTITY: {
-            'description': 'Invalid content type uploaded - must be image/png'}
+            'description': 'Invalid content type uploaded - must be image/png'},
+        status.HTTP_404_NOT_FOUND: {'description': 'Project not found'}
     },
     tags=['pictures', 'projects'])
 async def upload_project_picture(
@@ -476,4 +499,29 @@ async def upload_project_picture(
         pid=pid,
         picture=local_file_path.name))
     await async_session.commit()
+    return Response(status_code=status.HTTP_200_OK)
+
+
+@app.delete(
+    '/project/picture',
+    responses={
+        status.HTTP_403_FORBIDDEN: {'description': 'User authorization or permission error'},
+        status.HTTP_404_NOT_FOUND: {'description': 'Project not found'}
+    },
+    tags=['pictures', 'projects'])
+async def delete_project_picture(
+        pid: int,
+        picture_file: str,
+        access_token: str = Depends(oauth2),
+        async_session: AsyncSession = Depends(get_db)):
+    """Upload project picture to pid via currently logged in user"""
+    user = await models.User.from_b64_access_token(access_token, async_session)
+    if not user:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
+    project = await models.Project.from_pid(pid, async_session)
+    if project.owner_uid != user.uid:
+        membership = await models.ProjectMembership.from_uid_pid(user.uid, pid, async_session)
+        if not membership or membership.membership_type != schemas.MembershipType.ADMIN:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
+    await models.ProjectPicture.delete_project_picture(pid, picture_file, async_session)
     return Response(status_code=status.HTTP_200_OK)
