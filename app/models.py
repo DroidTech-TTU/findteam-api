@@ -337,6 +337,15 @@ class Project(Base):
                 return None
 
     @classmethod
+    async def from_uid(cls, uid: int, async_session: AsyncSession) -> list['Project']:
+        """Return list of Projects owned by uid - does not include memberships!"""
+        async with async_session.begin():
+            stmt = await async_session.execute(
+                select(join(User, cls)).
+                where(cls.owner_uid == uid and cls.owner_uid == User.uid))
+            return stmt.all()
+
+    @classmethod
     async def search(cls, query: str, async_session: AsyncSession) -> list['Project']:
         """Search for list of Projects matching query"""
         async with async_session.begin():
@@ -464,7 +473,7 @@ class ProjectMembership(Base):
         await async_session.commit()
 
     @classmethod
-    async def from_uid_pid(cls, uid: int, pid: int, async_session: AsyncSession):
+    async def from_uid_pid(cls, uid: int, pid: int, async_session: AsyncSession) -> 'ProjectMembership':
         """Return ProjectMembership of uid in pid or None"""
         async with async_session.begin():
             stmt = await async_session.execute(
@@ -472,6 +481,20 @@ class ProjectMembership(Base):
                 where(cls.pid == pid, cls.uid == User.uid))
             result = stmt.one_or_none()
             return result[0]
+
+    @classmethod
+    async def from_uid(
+            cls,
+            uid: int,
+            async_session: AsyncSession,
+            minimum_membership: MembershipType = None) -> list['ProjectMembership']:
+        """Return list of ProjectMemberships of uid - does not include ownership!"""
+        async with async_session.begin():
+            stmt = select(join(User, cls)).where(
+                cls.uid == uid and cls.uid == User.uid)
+            if minimum_membership:
+                stmt = stmt.where(cls.membership_type >= minimum_membership)
+            return (await async_session.execute(stmt)).all()
 
 
 class Message(Base):

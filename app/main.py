@@ -494,7 +494,7 @@ async def upload_project_picture(
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY)
     project = await models.Project.from_pid(pid, async_session)
     if not project:
-        raise HTTPException(status_code=404)
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
     if project.owner_uid != user.uid:
         membership = await models.ProjectMembership.from_uid_pid(user.uid, pid, async_session)
         if not membership or membership.membership_type != schemas.MembershipType.ADMIN:
@@ -535,6 +535,8 @@ async def delete_project_picture(
     if not user:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
     project = await models.Project.from_pid(pid, async_session)
+    if not project:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
     if project.owner_uid != user.uid:
         membership = await models.ProjectMembership.from_uid_pid(user.uid, pid, async_session)
         if not membership or membership.membership_type != schemas.MembershipType.ADMIN:
@@ -547,6 +549,9 @@ async def delete_project_picture(
 @app.get(
     '/user/search',
     response_model=list[schemas.UserResultModel],
+    responses={
+        status.HTTP_403_FORBIDDEN: {'description': 'User authorization error'}
+    },
     tags=['users', 'search'])
 async def search_users(
         query: str = None,
@@ -566,17 +571,30 @@ async def search_users(
 @app.get(
     '/project/search',
     response_model=list[schemas.ProjectResultModel],
-    tags=['projects', 'search'])
+    responses={
+        status.HTTP_403_FORBIDDEN: {'description': 'User authorization error'},
+        status.HTTP_406_NOT_ACCEPTABLE: {
+            'description': 'uid to_uid XOR query must be specified'}
+    },
+    tags=['projects', 'search', 'users'])
 async def search_projects(
         query: str = None,
+        uid: int = None,
         access_token: str = Depends(oauth2),
         async_session: AsyncSession = Depends(get_db)):
-    """Search for Projects by an arbitrary query - otherwise chosen by algorithm"""
+    """Search for Projects by an arbitrary query OR User ID - otherwise chosen by algorithm"""
     user = await models.User.from_b64_access_token(access_token, async_session)
     if not user:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
     if query:
         results = await models.Project.search(query, async_session)
+    elif uid:
+        results = [await models.Project.from_pid(membership.pid, async_session)
+                   for membership in await models.ProjectMembership.from_uid(
+                       uid,
+                       async_session,
+                       minimum_membership=schemas.MembershipType.MEMBER)]
+        results.extend(await models.Project.from_uid(uid, async_session))
     else:
         results = await models.Project.random(async_session)
     return [await schemas.ProjectResultModel.from_orm(p, async_session) for p in results]
