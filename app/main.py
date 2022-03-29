@@ -325,7 +325,7 @@ async def get_picture(
     responses={
         status.HTTP_403_FORBIDDEN: {'description': 'User authorization error'},
         status.HTTP_422_UNPROCESSABLE_ENTITY: {
-            'description': 'Invalid content type uploaded - must be image/png'}
+            'description': 'Invalid content type uploaded - must be image/png or image/jpeg'}
     },
     tags=['pictures', 'users'])
 async def upload_user_picture(
@@ -338,11 +338,15 @@ async def upload_user_picture(
     user = await models.User.from_b64_access_token(access_token, async_session)
     if not user:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
-    if picture.content_type != 'image/png':
+    if picture.content_type not in ('image/png', 'image/jpeg'):
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY)
     picture_data = picture.file.read()
     local_file_path = (settings.picture_storage /
-                       sha256(picture_data).hexdigest()).with_suffix('.png')
+                       sha256(picture_data).hexdigest())
+    if picture.content_type == 'image/png':
+        local_file_path = local_file_path.with_suffix('.png')
+    elif picture.content_type == 'image/jpeg':
+        local_file_path = local_file_path.with_suffix('.jpg')
     if not local_file_path.exists():
         with local_file_path.open('wb') as local_file:
             local_file.write(picture_data)
@@ -470,7 +474,7 @@ async def update_existing_project(
     responses={
         status.HTTP_403_FORBIDDEN: {'description': 'User authorization or permission error'},
         status.HTTP_422_UNPROCESSABLE_ENTITY: {
-            'description': 'Invalid content type uploaded - must be image/png'},
+            'description': 'Invalid content type uploaded - must be image/png or image/jpeg'},
         status.HTTP_404_NOT_FOUND: {'description': 'Project not found'}
     },
     tags=['pictures', 'projects'])
@@ -485,7 +489,8 @@ async def upload_project_picture(
     user = await models.User.from_b64_access_token(access_token, async_session)
     if not user:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
-    if picture.content_type != 'image/png':
+    logger.debug(picture.content_type)
+    if picture.content_type not in ('image/png', 'image/jpeg'):
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY)
     project = await models.Project.from_pid(pid, async_session)
     if not project:
@@ -496,7 +501,11 @@ async def upload_project_picture(
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
     picture_data = picture.file.read()
     local_file_path = (settings.picture_storage /
-                       sha256(picture_data).hexdigest()).with_suffix('.png')
+                       sha256(picture_data).hexdigest())
+    if picture.content_type == 'image/png':
+        local_file_path = local_file_path.with_suffix('.png')
+    elif picture.content_type == 'image/jpeg':
+        local_file_path = local_file_path.with_suffix('.jpg')
     if not local_file_path.exists():
         with local_file_path.open('wb') as local_file:
             local_file.write(picture_data)
