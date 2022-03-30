@@ -154,6 +154,7 @@ async def update_user(
     uid = user.uid
     try:
         user_dict = dict(user)
+        del user_dict['password']
         if new_info.password:
             user.password = models.User.hash_password(
                 new_info.password)  # Handle password change
