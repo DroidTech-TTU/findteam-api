@@ -215,13 +215,13 @@ class Tag(Base):
         """Return the Tags associated with a User or Project ID"""
         assert bool(uid) ^ bool(pid)
         async with async_session.begin():
-            stmt = select(join(join(User, UserTagged)
-                               if uid else join(Project, ProjectTagged), Tag))
             if uid:
-                stmt = stmt.where(User.uid == uid, UserTagged.uid == uid)
+                stmt = select(join(Tag, join(User, UserTagged))).where(
+                    User.uid == uid, UserTagged.uid == uid, Tag.text == UserTagged.tag_text)
             else:
-                stmt = stmt.where(Project.pid == pid, ProjectTagged.pid == pid)
-            result = await async_session.execute(stmt.where(Tag.text == UserTagged.tag_text))
+                stmt = select(join(Tag, join(Project, ProjectTagged))).where(
+                    Project.pid == pid, ProjectTagged.pid == pid, Tag.text == ProjectTagged.tag_text)
+            result = await async_session.execute(stmt)
             return result.all()
 
     @classmethod

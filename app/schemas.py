@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from .models import (MembershipType, Project, ProjectMembership,
                      ProjectPicture, Status, Tag, User, UserUrl)
+from . import logger
 
 
 class RegisterRequestModel(BaseModel):
@@ -242,13 +243,15 @@ class ProjectResultModel(BaseModel):
     @classmethod
     async def from_orm(cls, project: Project, async_session: AsyncSession) -> 'ProjectResultModel':
         """Fetch Project data into schema"""
+        tags = await Tag.get_tags(
+                      async_session,
+                      pid=project.pid)
+        logger.debug(tags)
         return cls(
             pictures=await ProjectPicture.get_project_pictures(project.pid, async_session),
             members=await ProjectMembership.get_project_memberships(project.pid, async_session),
             tags=[ProjectTagModel.from_orm(tag) for tag in
-                  await Tag.get_tags(
-                      async_session,
-                      pid=project.pid)],
+                  tags],
             **dict(project))
 
     class Config:

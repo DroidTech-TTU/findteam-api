@@ -233,7 +233,7 @@ async def get_chat_history(
         access_token: str = Depends(oauth2),
         async_session: AsyncSession = Depends(get_db)):
     """List MessageResultModels of logged in user in chat with uid or pid"""
-    if uid and pid:
+    if not (bool(uid) ^ bool(pid)):
         raise HTTPException(status_code=status.HTTP_406_NOT_ACCEPTABLE)
     user = await models.User.from_b64_access_token(access_token, async_session)
     if not user:
@@ -270,7 +270,7 @@ async def send_message(
         access_token: str = Depends(oauth2),
         async_session: AsyncSession = Depends(get_db)):
     """Send MessageRequestModel from logged in User"""
-    if msg.to_uid and msg.to_pid:
+    if not (bool(msg.to_uid) ^ bool(msg.to_pid)):
         raise HTTPException(status_code=status.HTTP_406_NOT_ACCEPTABLE)
     user = await models.User.from_b64_access_token(access_token, async_session)
     if not user:
@@ -489,7 +489,6 @@ async def upload_project_picture(
     user = await models.User.from_b64_access_token(access_token, async_session)
     if not user:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
-    logger.debug(picture.content_type)
     if picture.content_type not in ('image/png', 'image/jpeg'):
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY)
     project = await models.Project.from_pid(pid, async_session)
@@ -583,7 +582,7 @@ async def search_projects(
         access_token: str = Depends(oauth2),
         async_session: AsyncSession = Depends(get_db)):
     """Search for Projects by an arbitrary query OR User ID - otherwise chosen by algorithm"""
-    if query and uid:
+    if not (bool(query) ^ bool(uid)):
         raise HTTPException(status_code=status.HTTP_406_NOT_ACCEPTABLE)
     user = await models.User.from_b64_access_token(access_token, async_session)
     if not user:
