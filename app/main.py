@@ -606,7 +606,7 @@ async def search_users(
     responses={
         status.HTTP_403_FORBIDDEN: {'description': 'User authorization error'},
         status.HTTP_406_NOT_ACCEPTABLE: {
-            'description': 'uid to_uid XOR query must be specified'}
+            'description': 'uid and query may not be specified at same time'}
     },
     tags=['projects', 'search', 'users'])
 async def search_projects(
@@ -615,7 +615,7 @@ async def search_projects(
         access_token: str = Depends(oauth2),
         async_session: AsyncSession = Depends(get_db)):
     """Search for Projects by an arbitrary query OR User ID - otherwise chosen by algorithm"""
-    if not (bool(query) ^ bool(uid)):
+    if query and uid:
         raise HTTPException(status_code=status.HTTP_406_NOT_ACCEPTABLE)
     user = await models.User.from_b64_access_token(access_token, async_session)
     if not user:
