@@ -497,7 +497,7 @@ async def delete_project(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
     if project.owner_uid != user.uid:
         return Response(status_code=status.HTTP_401_UNAUTHORIZED)
-    await models.Project.delete_project(project.pid)
+    await models.Project.delete_project(project.pid, async_session)
     await async_session.commit()
     return Response(status_code=status.HTTP_200_OK)
 
