@@ -32,7 +32,7 @@ class MembershipType(IntEnum):
     """Write, read, chat"""
 
     ADMIN = 2
-    """Accept applicants, write, read, chat"""
+    """Accept applicants, write, read, chat - CANNOT DELETE PROJECT"""
 
 
 class Status(IntEnum):
@@ -362,6 +362,14 @@ class Project(Base):
             stmt = await async_session.execute(
                 select(cls).order_by(func.rand()).limit(limit))  # MYSQL ONLY!!!
             return [item[0] for item in stmt.all()]
+
+    @classmethod
+    async def delete_project(cls, pid: int, async_session: AsyncSession):
+        """Delete the Project by pid"""
+        async with async_session.begin():
+            await async_session.execute(delete(ProjectPicture).where(ProjectPicture.pid == pid))
+            await async_session.execute(delete(ProjectMembership).where(ProjectMembership.pid == pid))
+            await async_session.execute(delete(cls).where(cls.pid == pid))
 
 
 class ProjectPicture(Base):

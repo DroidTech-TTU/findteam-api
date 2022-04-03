@@ -225,7 +225,7 @@ async def get_chat_list(
     responses={
         status.HTTP_403_FORBIDDEN: {'description': 'User authorization error'},
         status.HTTP_406_NOT_ACCEPTABLE: {
-            'description': 'uid XOR pid must be specified'}
+            'description': 'uid XOR pid must optionally be specified'}
     },
     tags=['chats'])
 async def get_chat_history(
@@ -255,6 +255,7 @@ async def get_chat_history(
         elif message.to_pid:
             message.is_read = True
         results.append(schemas.MessageResultModel.from_orm(message))
+    await async_session.commit()
     return results
 
 
@@ -433,6 +434,7 @@ async def create_new_project(
     responses={
         status.HTTP_403_FORBIDDEN: {'description': 'User authorization error'},
         status.HTTP_400_BAD_REQUEST: {'description': 'Invalid data given'},
+        status.HTTP_401_UNAUTHORIZED: {'description': 'User must be project admin or above'},
         status.HTTP_404_NOT_FOUND: {'description': 'Project not found'}
     },
     tags=['projects'])
@@ -448,6 +450,9 @@ async def update_existing_project(
     project = await models.Project.from_pid(pid, async_session)
     if not project:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+    membership = await models.ProjectMembership.from_uid_pid(user.uid, project.pid, async_session)
+    if not membership or membership.membership_type < models.MembershipType.ADMIN:  # Only admin+ can update
+        return Response(status_code=status.HTTP_401_UNAUTHORIZED)
     project_dict = dict(project)
     for key in project_dict:  # Remaining ProjectRequestModel attributes
         try:
@@ -466,6 +471,33 @@ async def update_existing_project(
         [tag.dict() for tag in new_info.tags],
         async_session,
         pid=pid)
+    await async_session.commit()
+    return Response(status_code=status.HTTP_200_OK)
+
+
+@app.delete(
+    '/project',
+    responses={
+        status.HTTP_403_FORBIDDEN: {'description': 'User authorization error'},
+        status.HTTP_401_UNAUTHORIZED: {
+            'description': 'User unauthorized to delete other user project'},
+        status.HTTP_404_NOT_FOUND: {'description': 'Project not found'}
+    },
+    tags=['projects'])
+async def delete_project(
+        pid: int,
+        access_token: str = Depends(oauth2),
+        async_session: AsyncSession = Depends(get_db)):
+    """Delete Project by Project ID"""
+    user = await models.User.from_b64_access_token(access_token, async_session)
+    if not user:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
+    project = await models.Project.from_pid(pid, async_session)
+    if not project:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+    if project.owner_uid != user.uid:
+        return Response(status_code=status.HTTP_401_UNAUTHORIZED)
+    await models.Project.delete_project(project.pid)
     await async_session.commit()
     return Response(status_code=status.HTTP_200_OK)
 
