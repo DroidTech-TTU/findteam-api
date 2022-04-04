@@ -579,6 +579,39 @@ async def delete_project_picture(
     return Response(status_code=status.HTTP_200_OK)
 
 
+@app.post(
+    '/project/join',
+    responses={
+        status.HTTP_404_NOT_FOUND: {'description': 'Project not found'},
+        status.HTTP_403_FORBIDDEN: {'description': 'User authorization error'},
+        status.HTTP_400_BAD_REQUEST: {
+            'description': 'User already joined or applied to project'}
+    },
+    tags=['projects'])
+async def apply_to_join_project(
+        pid: int,
+        access_token: str = Depends(oauth2),
+        async_session: AsyncSession = Depends(get_db)):
+    """Add currently logged in User membership application to project"""
+    user = await models.User.from_b64_access_token(access_token, async_session)
+    if not user:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
+    project = await models.Project.from_pid(pid, async_session)
+    if not project:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+    if project.owner_uid == user.uid:
+        return Response(status_code=status.HTTP_400_BAD_REQUEST)
+    new_membership = models.ProjectMembership(
+        pid=project.pid,
+        uid=user.uid,
+        membership_type=models.MembershipType.APPLICANT)
+    async_session.add(new_membership)
+    try:
+        await async_session.commit()
+    except IntegrityError:
+        return Response(status_code=status.HTTP_400_BAD_REQUEST)
+
+
 @app.get(
     '/user/search',
     response_model=list[schemas.UserResultModel],
