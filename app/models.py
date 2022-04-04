@@ -485,10 +485,12 @@ class ProjectMembership(Base):
         """Return ProjectMembership of uid in pid or None"""
         async with async_session.begin():
             stmt = await async_session.execute(
-                select(join(User, cls)).
-                where(cls.pid == pid, cls.uid == User.uid))
-            result = stmt.one_or_none()
-            return result[0]
+                select(cls).where(cls.pid == pid, cls.uid == uid))
+            try:
+                result = stmt.one()
+                return result[0]
+            except NoResultFound:
+                return None
 
     @classmethod
     async def from_uid(

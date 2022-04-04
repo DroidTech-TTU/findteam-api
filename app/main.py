@@ -450,9 +450,10 @@ async def update_existing_project(
     project = await models.Project.from_pid(pid, async_session)
     if not project:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
-    membership = await models.ProjectMembership.from_uid_pid(user.uid, project.pid, async_session)
-    if not membership or membership.membership_type < models.MembershipType.ADMIN:  # Only admin+ can update
-        return Response(status_code=status.HTTP_401_UNAUTHORIZED)
+    if project.owner_uid != user.uid:  # If not owner check membership permission
+        membership = await models.ProjectMembership.from_uid_pid(user.uid, project.pid, async_session)
+        if not membership or membership.membership_type < models.MembershipType.ADMIN:  # Only admin+ can update
+            return Response(status_code=status.HTTP_401_UNAUTHORIZED)
     project_dict = dict(project)
     for key in project_dict:  # Remaining ProjectRequestModel attributes
         try:
