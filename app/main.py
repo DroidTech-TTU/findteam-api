@@ -9,6 +9,7 @@ from pathlib import Path
 
 from fastapi import (Depends, FastAPI, HTTPException, Request, UploadFile,
                      status)
+from fastapi.openapi.utils import get_openapi
 from fastapi.responses import FileResponse, RedirectResponse, Response
 from fastapi.security import (OAuth2PasswordBearer,
                               OAuth2PasswordRequestFormStrict)
@@ -33,7 +34,20 @@ app = FastAPI(
             'description': 'Picture storage and retrieval'
         }
     ])
+app_openapi = app.openapi
 oauth2 = OAuth2PasswordBearer(tokenUrl='login')
+
+
+def custom_openapi():
+    """Add logo to openapi for redoc"""
+    openapi_schema = app_openapi()
+    openapi_schema['info']['x-logo'] = {
+        'url': 'https://findteam.2labz.com/static/Icon.png'
+    }
+    return openapi_schema
+
+
+app.openapi = custom_openapi
 
 
 @app.on_event('startup')
