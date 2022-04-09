@@ -615,11 +615,10 @@ async def apply_to_join_project(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
     if project.owner_uid == user.uid:
         return Response(status_code=status.HTTP_400_BAD_REQUEST)
-    new_membership = models.ProjectMembership(
+    async_session.add(models.ProjectMembership(
         pid=project.pid,
         uid=user.uid,
-        membership_type=models.MembershipType.APPLICANT)
-    async_session.add(new_membership)
+        membership_type=models.MembershipType.APPLICANT))
     try:
         await async_session.commit()
     except IntegrityError:
