@@ -673,8 +673,7 @@ async def search_projects(
         results = [await models.Project.from_pid(membership.pid, async_session)
                    for membership in await models.ProjectMembership.from_uid(
                        uid,
-                       async_session,
-                       minimum_membership=schemas.MembershipType.MEMBER)]
+                       async_session)]
         results.extend(await models.Project.from_uid(uid, async_session))
     else:
         results = await models.Project.random(async_session)
