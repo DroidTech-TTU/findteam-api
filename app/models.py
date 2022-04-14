@@ -496,15 +496,12 @@ class ProjectMembership(Base):
     async def from_uid(
             cls,
             uid: int,
-            async_session: AsyncSession,
-            minimum_membership: MembershipType = None) -> list['ProjectMembership']:
+            async_session: AsyncSession) -> list['ProjectMembership']:
         """Return list of ProjectMemberships of uid - does not include ownership!"""
         async with async_session.begin():
-            stmt = select(join(User, cls)).where(
-                cls.uid == uid and cls.uid == User.uid)
-            if minimum_membership:
-                stmt = stmt.where(cls.membership_type >= minimum_membership)
-            return (await async_session.execute(stmt)).all()
+            return (await async_session.execute(
+                select(join(User, cls)).
+                where(cls.uid == uid and cls.uid == User.uid))).all()
 
 
 class Message(Base):
