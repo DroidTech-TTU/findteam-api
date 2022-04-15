@@ -9,9 +9,10 @@ from pathlib import Path
 
 from fastapi import (Depends, FastAPI, HTTPException, Request, UploadFile,
                      status)
-from fastapi.responses import FileResponse, RedirectResponse, Response
+from fastapi.responses import FileResponse, HTMLResponse, Response
 from fastapi.security import (OAuth2PasswordBearer,
                               OAuth2PasswordRequestFormStrict)
+from fastapi.templating import Jinja2Templates
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -34,6 +35,7 @@ app = FastAPI(
         }
     ])
 oauth2 = OAuth2PasswordBearer(tokenUrl='login')
+templates = Jinja2Templates(directory='templates')
 
 
 @app.on_event('startup')
@@ -58,12 +60,10 @@ async def startup():
     logger.info('Startup complete')
 
 
-@app.get('/')
-async def index():
-    """Redirect to /docs"""
-    return RedirectResponse(
-        url='/docs',
-        status_code=status.HTTP_303_SEE_OTHER)
+@app.get('/', response_class=HTMLResponse)
+async def index(request: Request):
+    """Return index template"""
+    return templates.TemplateResponse('index.html', {"request": request})
 
 
 @app.post(
