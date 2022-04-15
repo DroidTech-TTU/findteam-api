@@ -485,24 +485,23 @@ class ProjectMembership(Base):
         """Return ProjectMembership of uid in pid or None"""
         async with async_session.begin():
             stmt = await async_session.execute(
-                select(join(User, cls)).
-                where(cls.pid == pid, cls.uid == User.uid))
-            result = stmt.one_or_none()
-            return result[0]
+                select(cls).where(cls.pid == pid, cls.uid == uid))
+            try:
+                result = stmt.one()
+                return result[0]
+            except NoResultFound:
+                return None
 
     @classmethod
     async def from_uid(
             cls,
             uid: int,
-            async_session: AsyncSession,
-            minimum_membership: MembershipType = None) -> list['ProjectMembership']:
+            async_session: AsyncSession) -> list['ProjectMembership']:
         """Return list of ProjectMemberships of uid - does not include ownership!"""
         async with async_session.begin():
-            stmt = select(join(User, cls)).where(
-                cls.uid == uid and cls.uid == User.uid)
-            if minimum_membership:
-                stmt = stmt.where(cls.membership_type >= minimum_membership)
-            return (await async_session.execute(stmt)).all()
+            return (await async_session.execute(
+                select(join(User, cls)).
+                where(cls.uid == uid and cls.uid == User.uid))).all()
 
 
 class Message(Base):
