@@ -36,7 +36,7 @@ app = FastAPI(
     ])
 app_openapi = app.openapi
 oauth2 = OAuth2PasswordBearer(tokenUrl='login')
-templates = Jinja2Templates(directory='templates')
+templates = Jinja2Templates(directory=get_settings().template_path)
 
 
 def custom_openapi():
