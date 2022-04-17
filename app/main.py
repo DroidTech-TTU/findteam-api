@@ -409,6 +409,9 @@ async def create_new_project(
     user = await models.User.from_b64_access_token(access_token, async_session)
     if not user:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
+    for membership in project.members:
+        if membership.uid == user.uid:  # Owner is never member
+            return Response(status_code=status.HTTP_400_BAD_REQUEST)
     new_project = models.Project(
         owner_uid=user.uid,
         title=project.title,
@@ -461,6 +464,9 @@ async def update_existing_project(
     if not user:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
     project = await models.Project.from_pid(pid, async_session)
+    for membership in new_info.members:
+        if membership.uid == project.owner_uid:  # Owner is never member
+            return Response(status_code=status.HTTP_400_BAD_REQUEST)
     if not project:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
     if project.owner_uid != user.uid:  # If not owner check membership permission
