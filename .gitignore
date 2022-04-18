@@ -1,2 +1,4 @@
+__pycache__/
 app/__pycache__/
 .vscode/launch.json
+.pytest_cache/
