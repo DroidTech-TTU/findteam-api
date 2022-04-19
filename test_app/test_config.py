@@ -8,4 +8,5 @@ from . import settings
 
 
 def test_settings():
+    """Test app.config.settings"""
     assert isinstance(settings, Settings)
