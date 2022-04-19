@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 async def test_get_db():
     async_session = await anext(get_db())
     assert isinstance(async_session, AsyncSession)
+    assert async_session.is_active
 
 @pytest.mark.anyio
 async def test_init_models():
