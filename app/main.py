@@ -436,7 +436,7 @@ async def create_new_project(
     await models.Tag.set_tags(
         [tag.dict() for tag in project.tags],
         async_session,
-        pid=new_project.pid)
+        pid=new_pid)
     await async_session.commit()
     return new_pid
 
