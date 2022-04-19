@@ -220,7 +220,9 @@ class Tag(Base):
                     User.uid == uid, UserTagged.uid == uid, Tag.text == UserTagged.tag_text)
             else:
                 stmt = select(join(Tag, join(Project, ProjectTagged))).where(
-                    Project.pid == pid, ProjectTagged.pid == pid, Tag.text == ProjectTagged.tag_text)
+                    Project.pid == pid,
+                    ProjectTagged.pid == pid,
+                    Tag.text == ProjectTagged.tag_text)
             result = await async_session.execute(stmt)
             return result.all()
 
@@ -367,9 +369,12 @@ class Project(Base):
     async def delete_project(cls, pid: int, async_session: AsyncSession):
         """Delete the Project by pid"""
         async with async_session.begin():
-            await async_session.execute(delete(ProjectPicture).where(ProjectPicture.pid == pid))
-            await async_session.execute(delete(ProjectMembership).where(ProjectMembership.pid == pid))
-            await async_session.execute(delete(cls).where(cls.pid == pid))
+            await async_session.execute(
+                delete(ProjectPicture).where(ProjectPicture.pid == pid))
+            await async_session.execute(
+                delete(ProjectMembership).where(ProjectMembership.pid == pid))
+            await async_session.execute(
+                delete(cls).where(cls.pid == pid))
 
 
 class ProjectPicture(Base):
@@ -458,7 +463,10 @@ class ProjectMembership(Base):
         nullable=False)
 
     @classmethod
-    async def get_project_memberships(cls, pid: int, async_session: AsyncSession) -> list['ProjectMembership']:
+    async def get_project_memberships(
+            cls,
+            pid: int,
+            async_session: AsyncSession) -> list['ProjectMembership']:
         """Return all ProjectMemberships of pid"""
         async with async_session.begin():
             stmt = await async_session.execute(
@@ -481,7 +489,11 @@ class ProjectMembership(Base):
         await async_session.commit()
 
     @classmethod
-    async def from_uid_pid(cls, uid: int, pid: int, async_session: AsyncSession) -> 'ProjectMembership':
+    async def from_uid_pid(
+            cls,
+            uid: int,
+            pid: int,
+            async_session: AsyncSession) -> 'ProjectMembership':
         """Return ProjectMembership of uid in pid or None"""
         async with async_session.begin():
             stmt = await async_session.execute(

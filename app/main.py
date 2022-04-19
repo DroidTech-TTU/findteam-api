@@ -59,7 +59,7 @@ async def startup():
     logger.setLevel(settings.logging_level)
     logger.addHandler(_sh)
     logger.debug(str(settings))
-    logger.debug(f'CWD: {Path.cwd()}')
+    logger.debug('CWD: %s', Path.cwd())
     if settings.create_tables:
         logger.debug('Initializing models...')
         await init_models()
@@ -246,7 +246,7 @@ async def get_chat_history(
         access_token: str = Depends(oauth2),
         async_session: AsyncSession = Depends(get_db)):
     """List MessageResultModels of logged in user in chat with uid or pid"""
-    if not (bool(uid) ^ bool(pid)):
+    if not bool(uid) ^ bool(pid):
         raise HTTPException(status_code=status.HTTP_406_NOT_ACCEPTABLE)
     user = await models.User.from_b64_access_token(access_token, async_session)
     if not user:
@@ -284,7 +284,7 @@ async def send_message(
         access_token: str = Depends(oauth2),
         async_session: AsyncSession = Depends(get_db)):
     """Send MessageRequestModel from logged in User"""
-    if not (bool(msg.to_uid) ^ bool(msg.to_pid)):
+    if not bool(msg.to_uid) ^ bool(msg.to_pid):
         raise HTTPException(status_code=status.HTTP_406_NOT_ACCEPTABLE)
     user = await models.User.from_b64_access_token(access_token, async_session)
     if not user:
@@ -380,6 +380,7 @@ async def view_project(
         pid: int,
         access_token: str = Depends(oauth2),
         async_session: AsyncSession = Depends(get_db)):
+    """Return ProjectResultModel by Project ID (pid)"""
     user = await models.User.from_b64_access_token(access_token, async_session)
     if not user:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
@@ -466,8 +467,12 @@ async def update_existing_project(
     if not project:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
     if project.owner_uid != user.uid:  # If not owner check membership permission
-        membership = await models.ProjectMembership.from_uid_pid(user.uid, project.pid, async_session)
-        if not membership or membership.membership_type < models.MembershipType.ADMIN:  # Only admin+ can update
+        membership = await models.ProjectMembership.from_uid_pid(
+            user.uid,
+            project.pid,
+            async_session)
+        if not membership or membership.membership_type < models.MembershipType.ADMIN:
+            # Only admin+ can update
             return Response(status_code=status.HTTP_401_UNAUTHORIZED)
     project_dict = dict(project)
     for key in project_dict:  # Remaining ProjectRequestModel attributes
@@ -481,7 +486,9 @@ async def update_existing_project(
         [models.ProjectMembership(
             uid=membership.uid,
             pid=pid,
-            membership_type=membership.membership_type) for membership in new_info.members], async_session)
+            membership_type=membership.membership_type)
+            for membership in new_info.members],
+        async_session)
     await async_session.commit()
     await models.Tag.set_tags(
         [tag.dict() for tag in new_info.tags],

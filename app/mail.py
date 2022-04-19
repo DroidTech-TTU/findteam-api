@@ -19,7 +19,8 @@ forgot_template = jinja2.get_template('email_forgot_link.html')
 
 def send_password_reset(user: User) -> None:
     """Send password reset email to User via FindTeam gmail SMTP"""
-    reset_uri = f'https://findteam.2labz.com/forgot?{urlencode({"access_token": user.b64_access_token.decode()})}'
+    reset_uri = 'https://findteam.2labz.com/forgot?'
+    reset_uri += urlencode({"access_token": user.b64_access_token.decode()})
     msg = EmailMessage()
     msg.set_type('text/html')
     msg.set_content(reset_uri)
