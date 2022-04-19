@@ -8,13 +8,12 @@ from urllib.parse import urlencode
 
 from jinja2 import Environment, FileSystemLoader
 
-from .config import get_settings
+from .config import settings
 from .models import User
 
-_settings = get_settings()
-address = _settings.email_address
-password = _settings.email_password
-jinja2 = Environment(loader=FileSystemLoader(_settings.template_path))
+address = settings.email_address
+password = settings.email_password
+jinja2 = Environment(loader=FileSystemLoader(settings.template_path))
 forgot_template = jinja2.get_template('email_forgot_link.html')
 
 
@@ -35,6 +34,8 @@ def send_password_reset(user: User) -> None:
 
 def get_smtp() -> SMTP_SSL:
     """Authenticate with mail server using config, returning connection"""
+    if not password:
+        raise Exception('SMTP password not specified')
     smtp = SMTP_SSL(
         host='smtp.gmail.com',
         local_hostname='findteam.2labz.com')

@@ -1,9 +1,8 @@
-from app.main import app
-from fastapi.testclient import TestClient
+from . import client
 
-client = TestClient(app)
 
 def test_index():
     response = client.get('/')
-    print(response)
     assert response.status_code == 200
+
+# TODO

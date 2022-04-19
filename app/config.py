@@ -3,7 +3,6 @@ Settings and environment variable storage
 """
 
 import logging
-from functools import lru_cache
 from pathlib import Path
 
 from pydantic import BaseSettings, Field
@@ -26,13 +25,12 @@ class Settings(BaseSettings):
     email_address: str = Field(
         'findteam.2labz.com@gmail.com',
         env='EMAIL_ADDRESS')
-    email_password: str = Field(env='EMAIL_PASSWORD')
+    email_password: str = Field(
+        None,
+        env='EMAIL_PASSWORD')
 
     def __str__(self):
         return '\n'.join(f'{k}: {v}' for k, v in self.dict().items())
 
 
-@lru_cache()
-def get_settings() -> Settings:
-    """Return the Settings object"""
-    return Settings()
+settings = Settings()

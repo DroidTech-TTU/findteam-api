@@ -17,11 +17,11 @@ from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from . import __version__, logger, mail, models, schemas
-from .config import Settings, get_settings
+from .config import settings
 from .db import get_db, init_models
 
 app = FastAPI(
-    title=get_settings().app_name,
+    title=settings.app_name,
     description=__doc__,
     version=__version__,
     openapi_tags=[
@@ -36,7 +36,7 @@ app = FastAPI(
     ])
 app_openapi = app.openapi
 oauth2 = OAuth2PasswordBearer(tokenUrl='login')
-templates = Jinja2Templates(directory=get_settings().template_path)
+templates = Jinja2Templates(directory=settings.template_path)
 
 
 def custom_openapi():
@@ -54,7 +54,6 @@ app.openapi = custom_openapi
 @app.on_event('startup')
 async def startup():
     """Initialize logging and db models"""
-    settings = get_settings()
     _sh = StreamHandler()
     _sh.setFormatter(Formatter(settings.logging_format))
     logger.setLevel(settings.logging_level)
@@ -328,9 +327,7 @@ async def delete_chat_history(
     '/picture/{filename}',
     response_class=FileResponse,
     tags=['pictures'])
-async def get_picture(
-        filename: str,
-        settings: Settings = Depends(get_settings)):
+async def get_picture(filename: str):
     """Return picture file"""
     return FileResponse(settings.picture_storage / filename)
 
@@ -346,7 +343,6 @@ async def get_picture(
 async def upload_user_picture(
         picture: UploadFile,
         request: Request,
-        settings: Settings = Depends(get_settings),
         access_token: str = Depends(oauth2),
         async_session: AsyncSession = Depends(get_db)):
     """Upload logged in User's profile picture"""
@@ -535,7 +531,6 @@ async def upload_project_picture(
         pid: int,
         picture: UploadFile,
         request: Request,
-        settings: Settings = Depends(get_settings),
         access_token: str = Depends(oauth2),
         async_session: AsyncSession = Depends(get_db)):
     """Upload project picture to pid via currently logged in user"""
