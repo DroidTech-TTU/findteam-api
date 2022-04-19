@@ -1,5 +1,5 @@
 """
-FindTeam SQLAlchemy ORM models and Enums
+SQLAlchemy ORM models and Enums
 """
 
 from base64 import b64decode, b64encode

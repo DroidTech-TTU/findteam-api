@@ -1,5 +1,5 @@
 """
-FindTeam Pydantic schemas
+Pydantic schemas
 """
 
 from datetime import datetime

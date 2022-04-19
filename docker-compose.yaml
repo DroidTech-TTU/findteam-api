@@ -10,6 +10,7 @@ services:
             - "127.0.0.1:8080:80"
         environment:
             - DB_URL=mysql+aiomysql://root:root@db/findteam
+            - PICTURE_STORAGE=/pictures
         volumes:
             - api-pictures:/pictures
         restart: "unless-stopped"

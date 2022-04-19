@@ -504,7 +504,7 @@ async def delete_project(
         pid: int,
         access_token: str = Depends(oauth2),
         async_session: AsyncSession = Depends(get_db)):
-    """Delete Project by Project ID"""
+    """Allow current user to delete owned project by ID"""
     user = await models.User.from_b64_access_token(access_token, async_session)
     if not user:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
