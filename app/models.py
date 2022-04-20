@@ -568,19 +568,19 @@ class Message(Base):
                           and_(cls.to_uid == from_uid, cls.from_uid == to_uid))))
 
     @classmethod
-    async def get_chat_list(cls, uid: int, async_session: AsyncSession) -> set[int]:
-        """Return uids of active dms sent between uid by any user"""
+    async def get_chat_list(cls, uid: int, async_session: AsyncSession) -> dict[int, str]:
+        """Return uid: message dict of active dms sent between uid by any user"""
         async with async_session.begin():
             stmt = await async_session.execute(
                 select(cls).
                 where(or_(cls.from_uid == uid, cls.to_uid == uid)).
                 order_by(cls.date))
-            result = set()
+            result = dict()
             for message in stmt.all():
-                result.add(message[0].to_uid)
-                result.add(message[0].from_uid)
-            result.discard(uid)
-            result.discard(None)
+                result[message[0].to_uid] = message[0].text
+                result[message[0].from_uid] = message[0].text
+            result.pop(uid, None)
+            result.pop(None, None)
             return result
 
     @classmethod

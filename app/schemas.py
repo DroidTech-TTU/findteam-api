@@ -311,7 +311,20 @@ class MessageResultModel(BaseModel):
                 'is_read': True,
                 'date': datetime(year=1969, month=4, day=20),
                 'text': 'Hi John',
-                'from_uid': 21,
-                'to_uid': 22
+                'from_uid': 1,
+                'to_uid': 2
+            }
+        }
+
+class MessageListModel(BaseModel):
+    """User to User message list schema"""
+    to_uid: int
+    text: str
+
+    class Config:
+        schema_extra = {
+            'example': {
+                'to_uid': 2,
+                'text': 'Hi John'
             }
         }
