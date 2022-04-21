@@ -575,7 +575,7 @@ class Message(Base):
                 select(cls).
                 where(or_(cls.from_uid == uid, cls.to_uid == uid)).
                 order_by(cls.date))
-            result = dict()
+            result = {}
             for message in stmt.all():
                 result[message[0].to_uid] = message[0].text
                 result[message[0].from_uid] = message[0].text
