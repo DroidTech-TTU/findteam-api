@@ -29,10 +29,16 @@ class Base(_Base):
         return iter((c.key, getattr(self, c.key)) for c in inspect(self).mapper.column_attrs)
 
 
-async def init_models() -> None:
+async def init_models():
     """Create all models in Base metadata"""
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+
+
+async def drop_models():
+    """Drop all models in Base metadata - DESTRUCTIVE"""
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
 
 
 async def get_db() -> AsyncSession:
