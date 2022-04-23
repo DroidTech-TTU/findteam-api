@@ -40,10 +40,10 @@ templates = Jinja2Templates(directory=settings.template_path)
 
 
 def custom_openapi():
-    """Add logo to openapi for redoc"""
+    """Add settings.openapi_logo_path for redoc"""
     openapi_schema = app_openapi()
     openapi_schema['info']['x-logo'] = {
-        'url': 'https://findteam.2labz.com/static/Icon.png'
+        'url': settings.openapi_logo_path
     }
     return openapi_schema
 
