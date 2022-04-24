@@ -629,7 +629,7 @@ async def apply_to_join_project(
     async_session.add(models.ProjectMembership(
         pid=project.pid,
         uid=user.uid,
-        membership_type=models.MembershipType.APPLICANT))
+        membership_type=models.MembershipType.PENDING))
     try:
         await async_session.commit()
     except IntegrityError:

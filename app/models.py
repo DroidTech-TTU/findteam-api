@@ -25,7 +25,7 @@ from .db import Base
 class MembershipType(IntEnum):
     """User-project membership permission level"""
 
-    APPLICANT = 0
+    PENDING = 0
     """Read, chat"""
 
     MEMBER = 1
@@ -38,14 +38,14 @@ class MembershipType(IntEnum):
 class Status(IntEnum):
     """Project completion status"""
 
-    AWAITING_TEAM = 0
+    AWAITING = 0
     """Before progress is made"""
 
     IN_PROGRESS = 1
     """While progress is being made"""
 
-    COMPLETE = 2
-    """Project complete"""
+    COMPLETED = 2
+    """Project completed"""
 
 
 class User(Base):
