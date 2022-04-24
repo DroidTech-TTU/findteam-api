@@ -96,7 +96,7 @@ async def test_create_project(client, ensure_db):
         '/create',
         json={
             'title': 'A Very Cool Project',
-            'status': Status.AWAITING_TEAM,
+            'status': Status.AWAITING,
             'description': 'This is a test.',
             'members': [],
             'tags': [

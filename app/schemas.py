@@ -215,7 +215,7 @@ class ProjectRequestModel(BaseModel):
         schema_extra = {
             'example': {
                 'title': 'A Very Cool Project',
-                'status': Status.AWAITING_TEAM,
+                'status': Status.AWAITING,
                 'description': 'I am editing the description.',
                 'members': [ProjectMembershipRequestModel(
                     uid=22,
@@ -259,7 +259,7 @@ class ProjectResultModel(BaseModel):
             'example': {
                 'pid': 21,
                 'title': 'A Very Cool Project',
-                'status': Status.AWAITING_TEAM,
+                'status': Status.AWAITING,
                 'description': 'This project is very cool. Please join.',
                 'pictures': [
                     '8f434346648f6b96df89dda901c5176b10a6d83961dd3c1ac88b59b2dc327aa4.png'
